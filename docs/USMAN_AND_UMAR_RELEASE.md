@@ -28,3 +28,7 @@ apkanalyzer apk summary app/build/outputs/apk/release/app-release-unsigned.apk
 ```
 
 The APK should report application label `USMAN AND UMAR`, minSdk 28, targetSdk 34, and contain `armeabi-v7a` and `arm64-v8a` native libraries where applicable.
+
+## v1.0.2 packaging
+
+The v1.0.2 release changes the application ID to `com.usmanandumar.app`, packages only `armeabi-v7a`, and is signed with a dedicated release keystore using alias `usman`. The final APK must contain no `android:testOnly="true"` manifest attribute.
