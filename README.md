@@ -4,7 +4,7 @@ USMAN AND UMAR is an Android-native accessibility assistant based on the officia
 
 ## Runtime scope
 
-The app runs natively on Android and uses Android Accessibility Services for screen reading, UI navigation, and automation. It does not package or launch Linux virtual machines, PRoot, Node.js, Python, Ubuntu, QEMU, or other desktop/server runtime environments. The application does not request a large heap and is configured for devices with approximately 2.7 GB RAM.
+The app runs natively on Android and uses Android Accessibility Services for screen reading, UI navigation, and automation. It does not package or launch Linux virtual machines, PRoot, Node.js, Python, Ubuntu, QEMU, or other desktop/server runtime environments. Android-native inference components, where enabled, remain ordinary Android libraries and do not virtualize another operating system. The application does not request a large heap and is configured for devices with approximately 2.7 GB RAM.
 
 ## Device and build requirements
 

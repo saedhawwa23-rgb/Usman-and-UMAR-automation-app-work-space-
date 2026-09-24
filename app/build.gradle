@@ -264,6 +264,9 @@ dependencies {
 
     // Google ML Kit GenAI Prompt API (Android AI Core)
     implementation 'com.google.mlkit:genai-prompt:1.0.0-beta2'
+    // Android-native on-device inference provider used by the existing provider graph.
+    // This is not a Linux VM, PRoot, Node.js, Python, Ubuntu, or desktop runtime.
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.14.0'
 
 
     // Testing

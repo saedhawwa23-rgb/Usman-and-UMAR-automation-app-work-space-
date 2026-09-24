@@ -12,7 +12,7 @@ This release establishes **USMAN AND UMAR** as a separately maintained Android p
 - Restricted packaged native ABIs to `armeabi-v7a` and `arm64-v8a` for the universal ARM APK.
 - Disabled the large heap request to suit devices with approximately 2.7 GB RAM.
 - Removed the Linux/Ubuntu package-install helper from the repository.
-- Removed the optional LiteRT-LM Android dependency so the release does not ship the local model runtime.
+- Kept the existing LiteRT-LM Android provider dependency because its provider implementation is part of the imported OpenDroid source; this is an Android-native library and not a Linux/VM/desktop runtime.
 - Retained Android-native Accessibility Service integration as the primary automation mechanism.
 
 ## Validation
