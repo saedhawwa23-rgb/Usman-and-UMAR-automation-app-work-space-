@@ -63,7 +63,7 @@
     <application
         android:name=".OpenDroidApp"
         android:allowBackup="true"
-        android:largeHeap="true"
+        android:largeHeap="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -105,7 +105,7 @@
             android:exported="false">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Voice assistant agent loop; runs without microphone until the user grants RECORD_AUDIO" />
+                android:value="USMAN AND UMAR voice assistant loop; runs without microphone until the user grants RECORD_AUDIO" />
         </service>
 
         <!-- Accessibility Service for System Automation -->

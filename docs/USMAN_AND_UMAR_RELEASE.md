@@ -1,0 +1,30 @@
+# USMAN AND UMAR v1.0.0 Release Notes
+
+## Summary
+
+This release establishes **USMAN AND UMAR** as a separately maintained Android project based on the official OpenDroid foundation.
+
+## Changes
+
+- Renamed the Android application label and accessibility-service description to `USMAN AND UMAR`.
+- Set minimum SDK 28 and target SDK 34.
+- Set versionCode 1 and versionName 1.0.0.
+- Restricted packaged native ABIs to `armeabi-v7a` and `arm64-v8a` for the universal ARM APK.
+- Disabled the large heap request to suit devices with approximately 2.7 GB RAM.
+- Removed the Linux/Ubuntu package-install helper from the repository.
+- Removed the optional LiteRT-LM Android dependency so the release does not ship the local model runtime.
+- Retained Android-native Accessibility Service integration as the primary automation mechanism.
+
+## Validation
+
+Before publishing, verify the release artifact with:
+
+```bash
+./gradlew assembleRelease -PallowUnsignedRelease=true
+apkanalyzer manifest application-id app/build/outputs/apk/release/app-release-unsigned.apk
+apkanalyzer manifest min-sdk app/build/outputs/apk/release/app-release-unsigned.apk
+apkanalyzer manifest target-sdk app/build/outputs/apk/release/app-release-unsigned.apk
+apkanalyzer apk summary app/build/outputs/apk/release/app-release-unsigned.apk
+```
+
+The APK should report application label `USMAN AND UMAR`, minSdk 28, targetSdk 34, and contain `armeabi-v7a` and `arm64-v8a` native libraries where applicable.
