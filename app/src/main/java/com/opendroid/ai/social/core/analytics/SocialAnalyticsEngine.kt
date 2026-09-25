@@ -78,17 +78,17 @@ class SocialAnalyticsEngine @Inject constructor(
         val periodTitle = "${dateFormat.format(Date(sevenDaysAgo))} – ${dateFormat.format(Date(now))}"
 
         val topPlatform = topPost?.platform ?: SocialPlatform.X
-        val topPostSummary = topPost?.content?.take(80) ?: "OpenDroid v1.1 milestone announcement"
+        val topPostSummary = topPost?.content?.take(80) ?: "USMAN AND UMAR milestone announcement"
 
         val aiSummary = if (summary.totalPosts > 0) {
-            "Your product and developer updates generated the strongest engagement this week with ${summary.totalReach} total reach and an average engagement rate of ${String.format("%.1f", summary.averageEngagementRate)}%."
+            "Your product and developer updates generated the strongest engagement this week with ${summary.totalReach} total reach and an average engagement rate of ${String.format(Locale.US, "%.1f", summary.averageEngagementRate)}%."
         } else {
             "Your social channels remained steady this week. Publishing regular updates and release announcements will increase reach."
         }
 
         val recommendations = listOf(
             "Schedule mid-week technical deep dives on X and LinkedIn to capitalize on highest developer engagement.",
-            "Utilize community polls on Telegram and Discord to gather immediate user feedback for OpenDroid updates.",
+            "Utilize community polls on Telegram and Discord to gather immediate user feedback for USMAN AND UMAR updates.",
             "Continue pairing product announcements with visual demo clips to optimize reach on Instagram and YouTube."
         )
 
