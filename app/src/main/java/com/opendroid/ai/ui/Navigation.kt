@@ -57,6 +57,7 @@ object OpenDroidRoutes {
     const val ROUTINES = "routines"
     const val SOCIAL = "social"
     const val DISCOVERY = "discovery"
+    const val TERMUX = "termux"
 }
 
 /**
@@ -174,6 +175,9 @@ fun OpenDroidNavigation(
                 },
                 onNavigateToDiscovery = {
                     navController.navigate(OpenDroidRoutes.DISCOVERY)
+                },
+                onNavigateToTermux = {
+                    navController.navigate(OpenDroidRoutes.TERMUX)
                 }
             )
         }
@@ -286,6 +290,13 @@ fun OpenDroidNavigation(
                 onBack = { navController.popBackStack() }
             )
         }
+
+        composable(OpenDroidRoutes.TERMUX) {
+            TermuxScreen(
+                viewModel = hiltViewModel(),
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
 }
 
@@ -312,7 +323,8 @@ fun MainDashboard(
     onNavigateToPermissions: () -> Unit = {},
     onNavigateToCrashLog: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
-    onNavigateToDiscovery: () -> Unit = {}
+    onNavigateToDiscovery: () -> Unit = {},
+    onNavigateToTermux: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -447,7 +459,8 @@ fun MainDashboard(
                         onNavigateToPermissions = onNavigateToPermissions,
                         onNavigateToCrashLog = onNavigateToCrashLog,
                         onNavigateToRoutines = onNavigateToRoutines,
-                        onNavigateToDiscovery = onNavigateToDiscovery
+                        onNavigateToDiscovery = onNavigateToDiscovery,
+                        onNavigateToTermux = onNavigateToTermux
                     )
                 }
             }

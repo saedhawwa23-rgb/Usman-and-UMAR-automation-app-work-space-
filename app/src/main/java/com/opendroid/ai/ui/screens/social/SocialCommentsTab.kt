@@ -307,7 +307,7 @@ private fun CommentReviewCard(
 
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Grounded strictly in verified OpenDroid facts. Anti-hallucination active.",
+                            "Grounded strictly in verified USMAN AND UMAR facts. Anti-hallucination active.",
                             color = theme.textSecondary,
                             fontSize = 9.sp
                         )

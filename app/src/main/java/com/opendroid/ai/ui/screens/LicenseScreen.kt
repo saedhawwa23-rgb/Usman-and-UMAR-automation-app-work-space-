@@ -99,7 +99,7 @@ fun LicenseScreen(
             item {
                 PolicySection(
                     title = "APACHE LICENSE 2.0",
-                    content = "Copyright (c) 2026 OpenDroid Contributors\n" +
+                    content = "Copyright (c) 2026 USMAN AND UMAR Contributors\n" +
                             "Last Updated: August 18, 2026\n\n" +
                             "Licensed under the Apache License, Version 2.0 (the \"License\"); " +
                             "you may not use this file except in compliance with the License.\n" +
@@ -116,7 +116,7 @@ fun LicenseScreen(
             item {
                 PolicySection(
                     title = "THIRD-PARTY LICENSES",
-                    content = "OpenDroid uses the following open-source libraries:\n\n" +
+                    content = "USMAN AND UMAR uses the following open-source libraries:\n\n" +
                             "• Jetpack Compose — Apache License 2.0\n" +
                             "• Dagger/Hilt — Apache License 2.0\n" +
                             "• Room Database — Apache License 2.0\n" +
@@ -131,7 +131,7 @@ fun LicenseScreen(
             item {
                 PolicySection(
                     title = "CONTRIBUTION",
-                    content = "OpenDroid is a community-driven project. By contributing code, documentation, or other materials, " +
+                    content = "USMAN AND UMAR is a community-driven project. By contributing code, documentation, or other materials, " +
                             "you agree that your contributions will be licensed under the same MIT License.\n\n" +
                             "We welcome contributions of all kinds:\n\n" +
                             "• Bug reports and feature requests\n" +
@@ -145,7 +145,7 @@ fun LicenseScreen(
             item {
                 PolicySection(
                     title = "ATTRIBUTION",
-                    content = "OpenDroid is built with ❤\uFE0F by the open-source community.\n\n" +
+                    content = "USMAN AND UMAR is built with ❤\uFE0F by the open-source community.\n\n" +
                             "Special thanks to all contributors who have helped make this project possible. " +
                             "Full contributor list is available on the GitHub repository."
                 )

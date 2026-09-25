@@ -281,7 +281,7 @@ private fun CreateCampaignDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Campaign Name", fontSize = 12.sp) },
-                    placeholder = { Text("e.g. OpenDroid v2.0 Global Launch", fontSize = 11.sp) },
+                    placeholder = { Text("e.g. USMAN AND UMAR v2.0 Global Launch", fontSize = 11.sp) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(

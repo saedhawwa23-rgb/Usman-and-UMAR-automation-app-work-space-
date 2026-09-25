@@ -108,7 +108,7 @@ fun SplashScreen(onNavigateNext: () -> Unit) {
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.bot),
-                    contentDescription = "OpenDroid Logo",
+                    contentDescription = "USMAN AND UMAR Logo",
                     modifier = Modifier.size(128.dp)
                 )
             }
@@ -116,7 +116,7 @@ fun SplashScreen(onNavigateNext: () -> Unit) {
             Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = "OPENDROID",
+                text = "USMAN AND UMAR",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.SansSerif,

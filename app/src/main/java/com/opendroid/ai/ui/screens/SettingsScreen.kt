@@ -79,6 +79,7 @@ fun SettingsScreen(
     onNavigateToCrashLog: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToDiscovery: () -> Unit = {},
+    onNavigateToTermux: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val config by viewModel.llmConfig.collectAsState()
@@ -241,6 +242,26 @@ fun SettingsScreen(
                             Text("Search AI providers and GitHub projects without a fixed list.", color = TextSecondary, fontSize = 12.sp)
                         }
                         Icon(Icons.Default.ArrowForward, contentDescription = "Open discovery", tint = AccentCyan)
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToTermux() },
+                    colors = CardDefaults.cardColors(containerColor = CardBackground)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("LOCAL TERMUX", fontWeight = FontWeight.Bold, color = AccentCyan)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Optional local terminal tasks with visible results; cloud execution is separate.", color = TextSecondary, fontSize = 12.sp)
+                        }
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Open local Termux", tint = AccentCyan)
                     }
                 }
             }
@@ -1480,7 +1501,7 @@ fun SettingsScreen(
                              )
                              Spacer(modifier = Modifier.height(6.dp))
                              Text(
-                                 text = "OpenDroid models occupy ${formatBytes(usedByApp)} of on-device storage.",
+                                 text = "USMAN AND UMAR models occupy ${formatBytes(usedByApp)} of on-device storage.",
                                  fontSize = 10.sp,
                                  color = TextSecondary
                              )
@@ -1710,7 +1731,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Text(
-                                    text = "If ElevenLabs key is not set, OpenDroid automatically falls back to native offline Android Text-to-Speech.",
+                                    text = "If ElevenLabs key is not set, USMAN AND UMAR automatically falls back to native offline Android Text-to-Speech.",
                                     fontSize = 10.sp,
                                     color = TextSecondary
                                 )
@@ -2214,7 +2235,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "How OpenDroid handles your data and privacy.",
+                                text = "How USMAN AND UMAR handles your data and privacy.",
                                 fontSize = 12.sp,
                                 color = TextSecondary
                             )
@@ -2260,7 +2281,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Usage terms and conditions for OpenDroid.",
+                                text = "Usage terms and conditions for USMAN AND UMAR.",
                                 fontSize = 12.sp,
                                 color = TextSecondary
                             )
@@ -2390,7 +2411,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "ABOUT OPENDROID",
+                                text = "ABOUT USMAN AND UMAR",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
@@ -2430,7 +2451,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "To allow OpenDroid to operate other applications autonomously (e.g. WhatsApp, Calendar), verify that the accessibility service 'OpenDroid' is active in Settings -> Accessibility -> Installed Services.",
+                            text = "To allow USMAN AND UMAR to operate other applications autonomously (e.g. WhatsApp, Calendar), verify that the accessibility service 'USMAN AND UMAR' is active in Settings -> Accessibility -> Installed Services.",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )

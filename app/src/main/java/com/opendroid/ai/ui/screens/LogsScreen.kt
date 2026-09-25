@@ -160,7 +160,7 @@ fun LogsScreen(
                     } else {
                         EmptyStateView(
                             title = "No executions recorded yet",
-                            subtitle = "Every step OpenDroid executes is archived here.",
+                            subtitle = "Every step USMAN AND UMAR executes is archived here.",
                             icon = Icons.Default.Info
                         )
                     }
@@ -178,7 +178,7 @@ fun LogsScreen(
                     } else {
                         EmptyStateView(
                             title = "All systems fully aligned",
-                            subtitle = "OpenDroid's Repair Engine has not encountered any unrecognized commands.",
+                            subtitle = "USMAN AND UMAR's Repair Engine has not encountered any unrecognized commands.",
                             icon = Icons.Default.CheckCircle,
                             iconColor = AccentCyan
                         )
@@ -303,7 +303,7 @@ fun UnknownActionCard(error: UnknownActionEntity) {
     }
 
     val explanation = when (error.fixStatus) {
-        "AUTO_FIXED" -> "Successfully auto-corrected by OpenDroid's Repair Engine."
+        "AUTO_FIXED" -> "Successfully auto-corrected by USMAN AND UMAR's Repair Engine."
         "REPLANNED" -> "Dynamically replanned and bypassed the unrecognized command."
         "FAILED" -> "Unrecognized system command failed execution."
         else -> "System anomaly tracked."

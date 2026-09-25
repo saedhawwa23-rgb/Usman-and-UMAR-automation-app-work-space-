@@ -327,7 +327,7 @@ fun PlanStepCard(
                         val errorBgColor = if (isHallucinationError) Color(0xFFFFB300).copy(alpha = 0.1f) else AccentRed.copy(alpha = 0.1f)
                         val errorBorderColor = if (isHallucinationError) Color(0xFFFFB300).copy(alpha = 0.3f) else AccentRed.copy(alpha = 0.3f)
                         val errorTitleColor = if (isHallucinationError) Color(0xFFFFB300) else AccentRed
-                        val errorTextDisplay = if (isHallucinationError) "Auto-fixing: The requested system action is currently being recovered and updated by the OpenDroid Repair Engine." else step.error!!
+                        val errorTextDisplay = if (isHallucinationError) "Auto-fixing: The requested system action is currently being recovered and updated by the USMAN AND UMAR Repair Engine." else step.error!!
 
                         Box(
                             modifier = Modifier

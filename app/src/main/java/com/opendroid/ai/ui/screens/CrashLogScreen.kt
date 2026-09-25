@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.opendroid.ai.core.crash.CrashLogRecord
 import com.opendroid.ai.ui.theme.AppTheme
-import com.opendroid.ai.ui.theme.OpenDroidColors
+import com.opendroid.ai.ui.theme.USMAN AND UMARColors
 import com.opendroid.ai.ui.viewmodel.CrashLogViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,7 +55,7 @@ fun CrashLogScreen(
     fun share(text: String) {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "OpenDroid crash report")
+            putExtra(Intent.EXTRA_SUBJECT, "USMAN AND UMAR crash report")
             putExtra(Intent.EXTRA_TEXT, text)
         }
         context.startActivity(Intent.createChooser(intent, "Share crash report"))
@@ -63,7 +63,7 @@ fun CrashLogScreen(
 
     fun copy(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("OpenDroid crash report", text))
+        clipboard.setPrimaryClip(ClipData.newPlainText("USMAN AND UMAR crash report", text))
         // Android 13+ shows its own copy confirmation; a Toast there would double up.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             Toast.makeText(context, "Crash report copied", Toast.LENGTH_SHORT).show()
@@ -194,7 +194,7 @@ private fun CrashCard(
     onToggle: () -> Unit,
     onShare: () -> Unit,
     onCopy: () -> Unit,
-    themeColors: OpenDroidColors
+    themeColors: USMAN AND UMARColors
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm:ss", Locale.getDefault()) }
     val timeText = dateFormat.format(Date(crash.timestamp))

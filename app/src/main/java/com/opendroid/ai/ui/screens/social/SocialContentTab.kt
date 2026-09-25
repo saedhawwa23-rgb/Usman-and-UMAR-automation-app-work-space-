@@ -128,7 +128,7 @@ fun SocialContentTab(
                         value = topicInput,
                         onValueChange = { topicInput = it },
                         label = { Text("What would you like to post about?", fontSize = 12.sp) },
-                        placeholder = { Text("e.g. OpenDroid v2 release with local AI agent capabilities", fontSize = 12.sp) },
+                        placeholder = { Text("e.g. USMAN AND UMAR v2 release with local AI agent capabilities", fontSize = 12.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3,
                         colors = OutlinedTextFieldDefaults.colors(
