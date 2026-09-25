@@ -6,6 +6,7 @@ package com.opendroid.ai.core.llm
  * aliases are normalized here instead of being interpreted ad hoc.
  */
 object ProviderCatalog {
+    private const val DYNAMIC_PREFIX = "discovered:"
     data class ProviderSpec(
         val displayName: String,
         val defaultModel: String,
@@ -52,28 +53,34 @@ object ProviderCatalog {
 
     fun isKnown(providerName: String): Boolean {
         val normalized = canonicalName(providerName)
-        return byCanonicalName.containsKey(normalized)
+        return byCanonicalName.containsKey(normalized) || isDynamic(normalized)
     }
+
+    fun isDynamic(providerName: String): Boolean = providerName.trim().startsWith(DYNAMIC_PREFIX)
 
     fun defaultModel(providerName: String): String {
         val normalized = canonicalName(providerName)
+        if (isDynamic(normalized)) return "custom-model"
         return requireNotNull(byCanonicalName[normalized]) {
             "Unknown LLM provider."
         }.defaultModel
     }
 
-    fun requiresApiKey(providerName: String): Boolean = when (canonicalName(providerName)) {
-        "Google Gemini",
-        "OpenAI",
-        "Anthropic Claude",
-        "Mistral AI",
-        "Groq",
-        "OpenRouter",
-        "Together AI",
-        "Cohere",
-        "DeepSeek",
-        "Custom OpenAI Compatible" -> true
-        else -> false
+    fun requiresApiKey(providerName: String): Boolean {
+        if (isDynamic(providerName)) return true
+        return when (canonicalName(providerName)) {
+            "Google Gemini",
+            "OpenAI",
+            "Anthropic Claude",
+            "Mistral AI",
+            "Groq",
+            "OpenRouter",
+            "Together AI",
+            "Cohere",
+            "DeepSeek",
+            "Custom OpenAI Compatible" -> true
+            else -> false
+        }
     }
 
     fun isOnDevice(providerName: String): Boolean = when (canonicalName(providerName)) {

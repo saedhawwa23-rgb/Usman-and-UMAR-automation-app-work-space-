@@ -25,6 +25,7 @@ import kotlin.random.Random
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
+import okhttp3.OkHttpClient
 
 @Singleton
 class LLMProviderFactory @Inject constructor(
@@ -42,6 +43,7 @@ class LLMProviderFactory @Inject constructor(
     private val customOpenAIProvider: Provider<CustomOpenAIProvider>,
     private val gemmaProvider: Provider<GemmaProvider>,
     private val liteRTLMProvider: Provider<LiteRTLMProvider>,
+    private val okHttpClient: OkHttpClient,
     private val hybridOnDeviceProvider: Provider<HybridOnDeviceProvider>,
     private val settingsRepository: SettingsRepository,
     private val onDeviceLatencyTracker: OnDeviceLatencyTracker,
@@ -51,7 +53,11 @@ class LLMProviderFactory @Inject constructor(
 ) {
 
     fun getProviderByName(name: String): LLMProvider {
-        val rawProvider = when (name) {
+        val rawProvider = if (ProviderCatalog.isDynamic(name)) {
+            // Runtime-discovered providers use the same OpenAI-compatible wire format.
+            // They are resolved from persisted definitions and never modify built-in branches.
+            DynamicOpenAIProvider(name, okHttpClient, settingsRepository)
+        } else when (name) {
             "Anthropic Claude" -> claudeProvider.get()
             "OpenAI" -> openAIProvider.get()
             "Google Gemini" -> geminiProvider.get()

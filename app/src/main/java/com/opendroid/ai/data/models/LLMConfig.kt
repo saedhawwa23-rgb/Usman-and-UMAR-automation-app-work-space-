@@ -52,7 +52,13 @@ data class LLMConfig(
     val showFloatingButton: Boolean = true,
     val isDarkMode: Boolean = true,
     val lastModelFetch: Map<String, Long> = emptyMap(), // Provider -> last fetch timestamp
-    val modelCache: Map<String, List<AIModel>> = emptyMap() // Provider -> cached AIModels list
+    val modelCache: Map<String, List<AIModel>> = emptyMap(), // Provider -> cached AIModels list
+    /** Runtime-discovered OpenAI-compatible providers; built-in providers remain unchanged. */
+    val dynamicAIProviders: List<DynamicAIProvider> = emptyList(),
+    /** GitHub projects the user explicitly marked as supported tools. */
+    val supportedGitHubProjects: List<GitHubProject> = emptyList(),
+    /** Project context selected for the next OpenDroid workflow. */
+    val activeGitHubProjectId: Long? = null
 )
 
 fun LLMConfig.resolvedAutoMode(): AutoMode =

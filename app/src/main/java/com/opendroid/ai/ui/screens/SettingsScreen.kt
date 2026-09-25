@@ -78,6 +78,7 @@ fun SettingsScreen(
     onNavigateToPermissions: () -> Unit = {},
     onNavigateToCrashLog: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
+    onNavigateToDiscovery: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val config by viewModel.llmConfig.collectAsState()
@@ -102,7 +103,7 @@ fun SettingsScreen(
         "Custom OpenAI Compatible",
         "Ollama",
         "On-Device AI"
-    )
+    ) + config.dynamicAIProviders.map { it.id }
 
     var providerDropdownExpanded by remember { mutableStateOf(false) }
     var keysSectionExpanded by remember { mutableStateOf(false) }
@@ -220,6 +221,26 @@ fun SettingsScreen(
                                 color = TextSecondary
                             )
                         }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToDiscovery() },
+                    colors = CardDefaults.cardColors(containerColor = CardBackground)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("DISCOVER EXTENSIONS", fontWeight = FontWeight.Bold, color = AccentCyan)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Search AI providers and GitHub projects without a fixed list.", color = TextSecondary, fontSize = 12.sp)
+                        }
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Open discovery", tint = AccentCyan)
                     }
                 }
             }
