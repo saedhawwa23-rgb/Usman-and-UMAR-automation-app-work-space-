@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.opendroid.ai.core.crash.CrashLogRecord
 import com.opendroid.ai.ui.theme.AppTheme
-import com.opendroid.ai.ui.theme.USMAN AND UMARColors
+import com.opendroid.ai.ui.theme.OpenDroidColors
 import com.opendroid.ai.ui.viewmodel.CrashLogViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -194,7 +194,7 @@ private fun CrashCard(
     onToggle: () -> Unit,
     onShare: () -> Unit,
     onCopy: () -> Unit,
-    themeColors: USMAN AND UMARColors
+    themeColors: OpenDroidColors
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm:ss", Locale.getDefault()) }
     val timeText = dateFormat.format(Date(crash.timestamp))
