@@ -177,8 +177,6 @@ object StorageWorkspaceProvider {
                 val extRoot = Environment.getExternalStorageDirectory().canonicalPath
                 val relative = if (canonical.startsWith(extRoot)) {
                     canonical.removePrefix(extRoot).trimStart('/')
-                } else if (canonical.startsWith("/sdcard")) {
-                    canonical.removePrefix("/sdcard").trimStart('/')
                 } else if (canonical.startsWith("/storage/emulated/0")) {
                     canonical.removePrefix("/storage/emulated/0").trimStart('/')
                 } else {
