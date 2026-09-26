@@ -102,23 +102,15 @@ class AdvancedControlActions @Inject constructor() {
                 val connManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
                 val isConnected: Boolean
                 val networkType: String
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    val network = connManager.activeNetwork
-                    val capabilities = connManager.getNetworkCapabilities(network)
-                    isConnected = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-                    networkType = when {
-                        capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true -> "WIFI"
-                        capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "MOBILE"
-                        capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) == true -> "ETHERNET"
-                        capabilities != null -> "OTHER"
-                        else -> "NONE"
-                    }
-                } else {
-                    @Suppress("DEPRECATION")
-                    val activeNetwork = connManager.activeNetworkInfo
-                    isConnected = activeNetwork?.isConnectedOrConnecting == true
-                    @Suppress("DEPRECATION")
-                    networkType = activeNetwork?.typeName ?: "UNKNOWN"
+                val network = connManager.activeNetwork
+                val capabilities = connManager.getNetworkCapabilities(network)
+                isConnected = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                networkType = when {
+                    capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true -> "WIFI"
+                    capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "MOBILE"
+                    capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) == true -> "ETHERNET"
+                    capabilities != null -> "OTHER"
+                    else -> "NONE"
                 }
 
                 val info = """
@@ -514,4 +506,3 @@ class AdvancedControlActions @Inject constructor() {
         }
     }
 }
-

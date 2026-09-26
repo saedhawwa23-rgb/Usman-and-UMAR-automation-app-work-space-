@@ -36,7 +36,7 @@ fun SocialAnalyticsTab(
     onRefresh: () -> Unit
 ) {
     val theme = AppTheme.colors
-    var selectedRangeDays by remember { mutableStateOf(7) }
+    var selectedRangeDays by remember { mutableIntStateOf(7) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),

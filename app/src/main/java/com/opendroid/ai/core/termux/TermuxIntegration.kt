@@ -1,5 +1,6 @@
 package com.opendroid.ai.core.termux
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -70,6 +71,12 @@ class TermuxIntegration @Inject constructor(
         true
     }.getOrDefault(false)
 
+    /**
+     * Termux resolves these values inside its own private filesystem. They are not
+     * paths into this app's storage, so replacing them with context.filesDir would
+     * break the Termux RUN_COMMAND contract.
+     */
+    @SuppressLint("SdCardPath")
     fun run(task: TermuxTask): Result<Unit> = runCatching {
         check(isInstalled()) { "Termux is not installed." }
         val callback = Intent(RESULT_ACTION).setPackage(context.packageName)

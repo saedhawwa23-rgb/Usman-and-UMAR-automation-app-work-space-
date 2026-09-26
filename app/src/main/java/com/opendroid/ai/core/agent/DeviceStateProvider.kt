@@ -58,24 +58,16 @@ class DeviceStateProvider @Inject constructor(
                     val connectivityManager = context
                         .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        val network = connectivityManager.activeNetwork
-                        val capabilities = connectivityManager.getNetworkCapabilities(network)
+                    val network = connectivityManager.activeNetwork
+                    val capabilities = connectivityManager.getNetworkCapabilities(network)
 
-                        if (capabilities?.hasTransport(
-                                NetworkCapabilities.TRANSPORT_WIFI
-                            ) == true
-                        ) {
-                            "Active"      // WiFi on AND connected
-                        } else {
-                            "Enabled"     // WiFi on but not connected
-                        }
+                    if (capabilities?.hasTransport(
+                            NetworkCapabilities.TRANSPORT_WIFI
+                        ) == true
+                    ) {
+                        "Active"      // WiFi on AND connected
                     } else {
-                        // Older Android
-                        @Suppress("DEPRECATION")
-                        val networkInfo = connectivityManager
-                            .getNetworkInfo(ConnectivityManager.TYPE_WIFI)
-                        if (networkInfo?.isConnected == true) "Active" else "Enabled"
+                        "Enabled"     // WiFi on but not connected
                     }
                 }
             }
@@ -95,58 +87,28 @@ class DeviceStateProvider @Inject constructor(
             val connectivityManager = context
                 .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val network = connectivityManager.activeNetwork
-                    ?: return "None"   // no active network at all
+            val network = connectivityManager.activeNetwork
+                ?: return "None"   // no active network at all
 
-                val capabilities = connectivityManager
-                    .getNetworkCapabilities(network)
-                    ?: return "None"
+            val capabilities = connectivityManager
+                .getNetworkCapabilities(network)
+                ?: return "None"
 
-                when {
-                    // Has actual internet access
-                    capabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_INTERNET
-                    ) &&
-                    capabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_VALIDATED
-                    ) -> {
-                        // Determine connection type
-                        when {
-                            capabilities.hasTransport(
-                                NetworkCapabilities.TRANSPORT_WIFI
-                            ) -> "WiFi"
-
-                            capabilities.hasTransport(
-                                NetworkCapabilities.TRANSPORT_CELLULAR
-                            ) -> "Mobile Data"
-
-                            capabilities.hasTransport(
-                                NetworkCapabilities.TRANSPORT_ETHERNET
-                            ) -> "Ethernet"
-
-                            else -> "Connected"
-                        }
+            when {
+                // Has actual internet access
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) -> {
+                    when {
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Mobile Data"
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
+                        else -> "Connected"
                     }
-
-                    // Network exists but no validated internet
-                    capabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_INTERNET
-                    ) -> "Limited"
-
-                    else -> "None"
                 }
-            } else {
-                // API < 23 fallback
-                @Suppress("DEPRECATION")
-                val activeNetwork = connectivityManager.activeNetworkInfo
-                when {
-                    activeNetwork == null -> "None"
-                    !activeNetwork.isConnected -> "None"
-                    activeNetwork.type == ConnectivityManager.TYPE_WIFI -> "WiFi"
-                    activeNetwork.type == ConnectivityManager.TYPE_MOBILE -> "Mobile Data"
-                    else -> "Connected"
-                }
+
+                // Network exists but no validated internet
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) -> "Limited"
+                else -> "None"
             }
         } catch (e: Exception) {
             Log.e(TAG, "Connectivity read failed: ${e.message}")

@@ -2,16 +2,16 @@
 
 ## Supported Versions
 
-Only the latest release version of OpenDroid is actively supported with security updates.
+Only the latest release version of USMAN AND UMAR is actively supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| >= 1.0  | :white_check_mark: |
+| >= 1.0.2 | :white_check_mark: |
 | < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
-We take the security of OpenDroid seriously. If you believe you have found a security vulnerability, please report it to us responsibly.
+We take the security of USMAN AND UMAR seriously. If you believe you have found a security vulnerability, please report it to us responsibly.
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 

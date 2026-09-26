@@ -1,7 +1,6 @@
 package com.opendroid.ai.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.opendroid.ai.data.models.DynamicAIProvider
@@ -112,7 +112,7 @@ fun DiscoveryScreen(
                     }
                     items(aiResults, key = { it.id }) { project ->
                         DiscoveryProjectCard(project, onOpen = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(project.htmlUrl)))
+                            context.startActivity(Intent(Intent.ACTION_VIEW, project.htmlUrl.toUri()))
                         }, onSelect = {
                             selectedAI = project
                             endpoint = "https://api.openai.com/v1"
@@ -154,7 +154,7 @@ fun DiscoveryScreen(
                     }
                     items(githubResults, key = { it.id }) { project ->
                         DiscoveryProjectCard(project, onOpen = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(project.htmlUrl)))
+                            context.startActivity(Intent(Intent.ACTION_VIEW, project.htmlUrl.toUri()))
                         }, onSelect = {}, onAdd = { viewModel.addProject(project) }, onUse = { viewModel.useProject(project) }, showSelect = false)
                     }
                     item {
@@ -162,7 +162,7 @@ fun DiscoveryScreen(
                         savedProjects.forEach { project ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(project.fullName, Modifier.weight(1f))
-                                IconButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(project.htmlUrl))) }) { Icon(Icons.Default.OpenInNew, "Open") }
+                                IconButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, project.htmlUrl.toUri())) }) { Icon(Icons.Default.OpenInNew, "Open") }
                             }
                         }
                     }

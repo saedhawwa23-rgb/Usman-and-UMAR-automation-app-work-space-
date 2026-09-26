@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +45,7 @@ fun SocialContentTab(
     onRemoveHashtags: (String) -> String
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
 
     var selectedPlatform by remember { mutableStateOf(SocialPlatform.X) }
     var topicInput by remember { mutableStateOf("") }
@@ -429,6 +431,7 @@ fun SocialContentTab(
 @Composable
 private fun ModifierChip(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -455,7 +458,8 @@ private fun PostItemCard(
     onDelete: () -> Unit
 ) {
     val theme = AppTheme.colors
-    val timeFormat = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+    val locale = LocalLocale.current.platformLocale
+    val timeFormat = SimpleDateFormat("MMM d, HH:mm", locale)
     val dateString = when {
         post.publishedTime != null -> "Published " + timeFormat.format(Date(post.publishedTime))
         post.scheduledPublishTime != null -> "Scheduled for " + timeFormat.format(Date(post.scheduledPublishTime))
@@ -578,6 +582,7 @@ private fun PostItemCard(
 @Composable
 private fun PostStatusBadge(status: PostStatus) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     val (color, text) = when (status) {
         PostStatus.PUBLISHED -> theme.accentCyan to "PUBLISHED"
         PostStatus.SCHEDULED -> theme.accentCyan to "SCHEDULED"
@@ -602,7 +607,8 @@ internal fun ScheduleTimeDialog(
     onConfirm: (Long) -> Unit
 ) {
     val theme = AppTheme.colors
-    var selectedOffsetHours by remember { mutableStateOf(1) }
+    val locale = LocalLocale.current.platformLocale
+    var selectedOffsetHours by remember { mutableIntStateOf(1) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

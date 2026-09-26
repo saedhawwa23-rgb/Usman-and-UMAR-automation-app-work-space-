@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +33,7 @@ fun SocialCampaignsTab(
     onCreateCampaign: (String, String, Int, List<SocialPlatform>) -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     var showCreateDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -134,7 +136,8 @@ fun SocialCampaignsTab(
 @Composable
 private fun CampaignCard(campaign: SocialCampaign) {
     val theme = AppTheme.colors
-    val timeFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+    val locale = LocalLocale.current.platformLocale
+    val timeFormat = SimpleDateFormat("MMM d", locale)
     val startStr = timeFormat.format(Date(campaign.startDate))
     val endStr = timeFormat.format(Date(campaign.endDate))
 
@@ -231,6 +234,7 @@ private fun CampaignCard(campaign: SocialCampaign) {
 @Composable
 private fun CampaignStatusBadge(status: CampaignStatus) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     val (color, text) = when (status) {
         CampaignStatus.ACTIVE -> theme.accentCyan to "ACTIVE"
         CampaignStatus.PLANNING -> theme.accentOrange to "PLANNING"
@@ -255,9 +259,10 @@ private fun CreateCampaignDialog(
     onConfirm: (String, String, Int, List<SocialPlatform>) -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     var name by remember { mutableStateOf("") }
     var objective by remember { mutableStateOf("") }
-    var durationDays by remember { mutableStateOf(7) }
+    var durationDays by remember { mutableIntStateOf(7) }
     val selectedPlatforms = remember {
         mutableStateListOf(SocialPlatform.X, SocialPlatform.TELEGRAM, SocialPlatform.LINKEDIN)
     }

@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +34,7 @@ fun SocialAccountsTab(
     onRefresh: () -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     var connectingPlatform by remember { mutableStateOf<SocialPlatform?>(null) }
     var revokingAccount by remember { mutableStateOf<SocialAccount?>(null) }
 
@@ -156,6 +158,7 @@ private fun AccountCard(
     onRevoke: () -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     val isConnected = account?.status == AccountStatus.CONNECTED
 
     Card(
@@ -260,7 +263,7 @@ private fun AccountCard(
                 ) {
                     val lastSync = account.lastSyncAt
                     val syncText = if (lastSync != null && lastSync > 0) {
-                        "Synced " + SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(lastSync))
+                        "Synced " + SimpleDateFormat("MMM d, HH:mm", locale).format(Date(lastSync))
                     } else {
                         "Not synced yet"
                     }
@@ -290,6 +293,7 @@ private fun AccountCard(
 @Composable
 private fun StatusBadge(status: AccountStatus) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     val (bgColor, textColor, text) = when (status) {
         AccountStatus.CONNECTED -> Triple(theme.accentCyan.copy(alpha = 0.15f), theme.accentCyan, "Connected")
         AccountStatus.DISCONNECTED -> Triple(theme.surface, theme.textSecondary, "Offline")
@@ -316,6 +320,7 @@ private fun ConnectAccountDialog(
     onConfirm: (SocialCredentials, List<SocialPermission>) -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
 
     var tokenOrKey by remember { mutableStateOf("") }
     var channelOrChatId by remember { mutableStateOf("") }

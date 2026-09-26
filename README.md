@@ -1,6 +1,6 @@
 # USMAN AND UMAR
 
-USMAN AND UMAR is an Android-native accessibility assistant based on the official [OpenDroid](https://github.com/yashab-cyber/opendroid) project. This repository contains the imported OpenDroid foundation and the v1.0.0 device/build configuration for USMAN AND UMAR.
+USMAN AND UMAR is an Android-native accessibility assistant based on the official [OpenDroid](https://github.com/yashab-cyber/opendroid) project. This repository contains the imported OpenDroid foundation and the v1.0.2 device/build configuration for USMAN AND UMAR.
 
 ## Runtime scope
 
@@ -12,9 +12,9 @@ The app runs natively on Android and uses Android Accessibility Services for scr
 |---|---|
 | Minimum Android SDK | 28 (Android 9) |
 | Target Android SDK | 34 (Android 14) |
-| Release version | 1.0.0, versionCode 1 |
-| Native ABIs | `armeabi-v7a` and `arm64-v8a` |
-| APK packaging | Universal APK containing both ARM ABIs |
+| Release version | 1.0.2, versionCode 3 |
+| Native ABI | `armeabi-v7a` |
+| APK packaging | 32-bit ARM APK |
 | Primary control channel | Android Accessibility Service |
 
 ## Build

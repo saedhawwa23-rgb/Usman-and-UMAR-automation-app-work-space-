@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <issues format="6" by="lint 9.3.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.1)" variant="all" version="9.3.1">
 
-    <issue
-        id="SdCardPath"
-        message="Do not hardcode &quot;/sdcard/&quot;; use `Environment.getExternalStorageDirectory().getPath()` instead"
-        errorLine1="                &quot;/sdcard&quot;,  // typically symlinks to externalStorageRoot"
-        errorLine2="                 ~~~~~~~">
-        <location
-            file="src/main/java/com/opendroid/ai/actions/AdvancedControlActions.kt"
-            line="83"
-            column="18"/>
-    </issue>
 
     <issue
         id="NonObservableLocale"
@@ -45,56 +35,10 @@
             column="5"/>
     </issue>
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is always >= 26"
-        errorLine1="                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {"
-        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/opendroid/ai/actions/AdvancedControlActions.kt"
-            line="152"
-            column="21"/>
-    </issue>
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is always >= 26"
-        errorLine1="                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {"
-        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/opendroid/ai/core/agent/DeviceStateProvider.kt"
-            line="61"
-            column="25"/>
-    </issue>
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is always >= 26"
-        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/opendroid/ai/core/agent/DeviceStateProvider.kt"
-            line="98"
-            column="17"/>
-    </issue>
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="Unnecessary; `SDK_INT` is always >= 26"
-        errorLine1="                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {"
-        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/opendroid/ai/actions/SystemActions.kt"
-            line="153"
-            column="25"/>
-    </issue>
 
-    <issue
-        id="ObsoleteSdkInt"
-        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
-        <location
-            file="src/main/res/mipmap-anydpi-v26"/>
-    </issue>
 
     <issue
         id="IconLauncherShape"

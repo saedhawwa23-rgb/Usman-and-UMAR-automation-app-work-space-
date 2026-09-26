@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +35,7 @@ fun SocialInboxTab(
     onRefresh: () -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     var selectedCategory by remember { mutableStateOf<InteractionCategory?>(null) }
     var replyingInteraction by remember { mutableStateOf<SocialInteraction?>(null) }
 
@@ -196,7 +198,8 @@ private fun InteractionCard(
     onDismissClick: () -> Unit
 ) {
     val theme = AppTheme.colors
-    val timeFormatted = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(interaction.timestamp))
+    val locale = LocalLocale.current.platformLocale
+    val timeFormatted = SimpleDateFormat("MMM d, HH:mm", locale).format(Date(interaction.timestamp))
 
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -327,6 +330,7 @@ private fun InteractionCard(
 @Composable
 private fun PriorityBadge(priority: InteractionPriority) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     val (color, text) = when (priority) {
         InteractionPriority.URGENT -> theme.accentRed to "URGENT"
         InteractionPriority.HIGH -> theme.accentOrange to "HIGH"
@@ -347,6 +351,7 @@ private fun PriorityBadge(priority: InteractionPriority) {
 @Composable
 private fun InteractionStatusBadge(status: String) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     val (color, text) = when (status.uppercase()) {
         "UNREAD" -> theme.accentCyan to "UNREAD"
         "RESOLVED" -> theme.textSecondary to "RESOLVED"

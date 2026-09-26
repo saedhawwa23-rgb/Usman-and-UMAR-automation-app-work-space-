@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +36,7 @@ fun SocialSettingsTab(
     onDeleteRule: (String) -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     var showAddRuleDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -189,6 +191,7 @@ private fun AutomationLevelCard(
     onSelect: () -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
 
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -231,6 +234,7 @@ private fun RuleCard(
     onDelete: () -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
 
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -288,7 +292,8 @@ private fun RuleCard(
 @Composable
 private fun AuditLogItem(log: SocialAuditEntry) {
     val theme = AppTheme.colors
-    val timeFormat = SimpleDateFormat("MMM d, HH:mm:ss", Locale.getDefault())
+    val locale = LocalLocale.current.platformLocale
+    val timeFormat = SimpleDateFormat("MMM d, HH:mm:ss", locale)
 
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -328,10 +333,11 @@ private fun AddRuleDialog(
     onConfirm: (SocialAutomationRule) -> Unit
 ) {
     val theme = AppTheme.colors
+    val locale = LocalLocale.current.platformLocale
     var ruleName by remember { mutableStateOf("") }
     var selectedTrigger by remember { mutableStateOf("SENTIMENT_POSITIVE") }
     var selectedAction by remember { mutableStateOf("AUTO_REPLY") }
-    var confidence by remember { mutableStateOf(0.85f) }
+    var confidence by remember { mutableFloatStateOf(0.85f) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
