@@ -2,6 +2,7 @@ package com.opendroid.ai.core.llm
 
 import android.content.Context
 import kotlinx.serialization.Serializable
+import java.util.Locale
 
 /**
  * Enumerates the on-device inference backends available.
@@ -304,7 +305,7 @@ object OnDeviceModelRegistry {
             if (requiredRamGb > 0.0 && totalRamGb < requiredRamGb) {
                 val modelName = spec.displayName
                 throw IllegalStateException(
-                    "Insufficient device memory: $modelName requires at least ${String.format("%.1f", requiredRamGb)} GB of system RAM, but your device only has ${String.format("%.1f", totalRamGb)} GB RAM. " +
+                    "Insufficient device memory: $modelName requires at least ${String.format(Locale.US, "%.1f", requiredRamGb)} GB of system RAM, but your device only has ${String.format(Locale.US, "%.1f", totalRamGb)} GB RAM. " +
                     "Running this model will cause the system to crash. Please use a smaller model like Qwen 2.5."
                 )
             }

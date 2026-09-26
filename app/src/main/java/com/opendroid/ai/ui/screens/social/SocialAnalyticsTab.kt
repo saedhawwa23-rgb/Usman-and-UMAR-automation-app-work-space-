@@ -26,6 +26,7 @@ import com.opendroid.ai.ui.components.DonutChart
 import com.opendroid.ai.ui.components.SimpleBarChart
 import com.opendroid.ai.ui.components.SimpleLineChart
 import com.opendroid.ai.ui.theme.AppTheme
+import java.util.Locale
 
 @Composable
 fun SocialAnalyticsTab(
@@ -95,7 +96,7 @@ fun SocialAnalyticsTab(
             ) {
                 AnalyticsMetricBox(
                     title = "Engagement",
-                    value = summary?.averageEngagementRate?.let { "${String.format("%.1f", it)}%" } ?: "0.0%",
+                    value = summary?.averageEngagementRate?.let { "${String.format(Locale.US, "%.1f", it)}%" } ?: "0.0%",
                     delta = "Active",
                     modifier = Modifier.weight(1f)
                 )
@@ -292,8 +293,8 @@ private fun LegendItem(label: String, percent: String, color: Color) {
 
 private fun formatCount(count: Long): String {
     return when {
-        count >= 1_000_000 -> String.format("%.1fM", count / 1_000_000.0)
-        count >= 1_000 -> String.format("%.1fK", count / 1_000.0)
+        count >= 1_000_000 -> String.format(Locale.US, "%.1fM", count / 1_000_000.0)
+        count >= 1_000 -> String.format(Locale.US, "%.1fK", count / 1_000.0)
         else -> count.toString()
     }
 }

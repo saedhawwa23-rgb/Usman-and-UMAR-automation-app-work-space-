@@ -136,8 +136,12 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           target: ${{ matrix.api-level >= 30 && 'google_apis' || 'default' }}
+          force-avd-creation: true
+          emulator-options: -no-window -noaudio -no-boot-anim
           disable-animations: true
-          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace
+          # The release APK remains armeabi-v7a-only; CI uses an x86_64 test
+          # APK because GitHub-hosted emulators cannot execute ARM-only APKs.
+          script: ./gradlew :app:connectedDebugAndroidTest -PinstrumentedTestAbi=x86_64 --stacktrace
 
       - name: Upload instrumented test reports
         if: always()

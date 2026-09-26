@@ -10,6 +10,7 @@ plugins {
 android {
     namespace = 'com.opendroid.ai'
     compileSdk 36
+    def instrumentedTestAbi = project.findProperty('instrumentedTestAbi')
 
     // USMAN AND UMAR supports Android 9+ on 32-bit and 64-bit ARM devices.
     ndkVersion "27.2.12479018"
@@ -21,7 +22,9 @@ android {
         versionCode 3
         versionName "1.0.2"
         ndk {
-            abiFilters "armeabi-v7a"
+            // Distribution and normal debug APKs remain 32-bit ARM only.
+            // CI's hosted x86_64 emulators use this explicit test-only override.
+            abiFilters instrumentedTestAbi ?: "armeabi-v7a"
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
