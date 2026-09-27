@@ -48,6 +48,7 @@ import com.opendroid.ai.ui.viewmodel.DiscoveryViewModel
 @Composable
 fun DiscoveryScreen(
     viewModel: DiscoveryViewModel,
+    initialTab: Int = 0,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -57,7 +58,7 @@ fun DiscoveryScreen(
     val savedProviders by viewModel.savedProviders.collectAsState()
     val busy by viewModel.busy.collectAsState()
     val message by viewModel.message.collectAsState()
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
     var query by remember { mutableStateOf("") }
     var directUrl by remember { mutableStateOf("") }
     var selectedAI by remember { mutableStateOf<GitHubProject?>(null) }

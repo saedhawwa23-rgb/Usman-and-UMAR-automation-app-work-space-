@@ -32,7 +32,7 @@ class InstagramAdapter @Inject constructor(
                 SocialAccountInfo(
                     id = "ig_${credentials.accountId.ifBlank { "opendroid.app" }}",
                     username = "opendroid.app",
-                    displayName = "OpenDroid AI Assistant",
+                    displayName = "USMAN AND UMAR AI Assistant",
                     avatarUrl = null,
                     grantedPermissions = supportedPermissions
                 )

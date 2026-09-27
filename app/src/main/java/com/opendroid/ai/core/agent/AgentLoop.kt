@@ -501,7 +501,7 @@ class AgentLoop @Inject constructor(
             val autoModeLabel = settingsRepository.llmConfig.first().approvalSettings().mode.name
 
             val systemPrompt = """
-                You are OpenDroid, a friendly and helpful Android AI assistant.
+                You are USMAN AND UMAR, a friendly and helpful Android AI assistant.
                 Talk like a real person — warm, casual, and natural. Avoid sounding robotic.
                 Keep your answers short and to the point, but feel free to be friendly.
                 

@@ -196,7 +196,7 @@ class SocialManager @Inject constructor(
 
         socialRepository.savePost(post)
         auditLogger.log(
-            actor = "OPENDROID_AI",
+            actor = "USMAN AND UMAR_AI",
             action = "DRAFTED_POST",
             platform = platform,
             targetId = post.id,
@@ -291,7 +291,7 @@ class SocialManager @Inject constructor(
                 errorMessage = null
             )
             auditLogger.log(
-                actor = post.approvedBy ?: "OPENDROID_AI",
+                actor = post.approvedBy ?: "USMAN AND UMAR_AI",
                 action = "PUBLISHED_POST",
                 platform = post.platform,
                 targetId = postId,

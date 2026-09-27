@@ -81,7 +81,7 @@ class VisionEngine @Inject constructor(
             return analyzeWithText(screenText, userQuestion)
         }
 
-        return "Could not capture or read the screen. The Accessibility Service may need to be re-enabled in Settings > Accessibility > OpenDroid."
+        return "Could not capture or read the screen. The Accessibility Service may need to be re-enabled in Settings > Accessibility > USMAN AND UMAR."
     }
 
     private suspend fun analyzeWithImage(
@@ -182,7 +182,7 @@ class VisionEngine @Inject constructor(
             return extractWithText(screenText, topic)
         }
 
-        return "Could not capture or read the screen. Please ensure the Accessibility Service is enabled in Settings > Accessibility > OpenDroid."
+        return "Could not capture or read the screen. Please ensure the Accessibility Service is enabled in Settings > Accessibility > USMAN AND UMAR."
     }
 
     private suspend fun extractWithImage(

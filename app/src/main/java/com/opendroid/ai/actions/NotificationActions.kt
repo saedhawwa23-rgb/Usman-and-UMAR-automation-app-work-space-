@@ -141,7 +141,7 @@ internal fun notificationPackageForApp(app: String): String =
  * Removes notification history from the app's own Room store. Android's live
  * notification dismissal API needs a listener-side key and additional product
  * semantics; this action deliberately has the narrower, deterministic contract
- * of clearing the records OpenDroid captured.
+ * of clearing the records USMAN AND UMAR captured.
  */
 internal class DismissNotificationAction(
     private val notificationDao: NotificationDao

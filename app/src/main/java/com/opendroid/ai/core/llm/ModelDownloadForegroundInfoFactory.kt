@@ -32,7 +32,7 @@ internal object ModelDownloadForegroundInfoFactory {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Model download in progress")
-            .setContentText("OpenDroid is downloading an on-device model.")
+            .setContentText("USMAN AND UMAR is downloading an on-device model.")
             .setContentIntent(openAppIntent)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
@@ -63,7 +63,7 @@ internal object ModelDownloadForegroundInfoFactory {
             "Model downloads",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shows progress while OpenDroid downloads an on-device model."
+            description = "Shows progress while USMAN AND UMAR downloads an on-device model."
         }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)

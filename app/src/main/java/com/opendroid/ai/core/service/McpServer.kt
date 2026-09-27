@@ -159,9 +159,9 @@ class McpServer @Inject constructor(
         .put("serverInfo", JSONObject().put("name", "opendroid").put("version", BuildConfig.VERSION_NAME))
 
     private fun tools(): JSONArray = JSONArray()
-        .put(tool("device_info", "Return OpenDroid and privileged-backend status", JSONObject()))
-        .put(tool("list_actions", "List actions available to OpenDroid", JSONObject()))
-        .put(tool("execute_action", "Execute an existing OpenDroid action", objectSchema(
+        .put(tool("device_info", "Return USMAN AND UMAR and privileged-backend status", JSONObject()))
+        .put(tool("list_actions", "List actions available to USMAN AND UMAR", JSONObject()))
+        .put(tool("execute_action", "Execute an existing USMAN AND UMAR action", objectSchema(
             JSONObject().put("action", stringSchema()).put("params", JSONObject().put("type", "object")),
             "action")))
         .put(tool("run_privileged_command", "Run a command through Shizuku, root, or app shell", objectSchema(
@@ -325,6 +325,6 @@ class McpServer @Inject constructor(
         const val MAX_HEADER_LINE_BYTES = 8192
         const val REQUEST_TIMEOUT_MS = 15_000
         const val JOIN_TIMEOUT_MS = 2_000L
-        const val THREAD_NAME = "OpenDroid-MCP"
+        const val THREAD_NAME = "USMAN AND UMAR-MCP"
     }
 }

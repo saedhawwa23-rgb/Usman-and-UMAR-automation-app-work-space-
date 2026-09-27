@@ -58,7 +58,7 @@ class SocialContentComposer @Inject constructor(
         }
 
         val prompt = """
-            You are an expert Social Media AI Manager for OpenDroid, an autonomous open-source AI device assistant for Android.
+            You are an expert Social Media AI Manager for USMAN AND UMAR, an autonomous open-source AI device assistant for Android.
             Generate a social media post for ${platform.displayName}.
             
             Topic: "$topic"
@@ -132,7 +132,7 @@ class SocialContentComposer @Inject constructor(
 
     suspend fun addCta(content: String, ctaType: String, platform: SocialPlatform): String {
         val cta = when (ctaType.lowercase()) {
-            "download" -> "\n\n👉 Try OpenDroid today: https://github.com/JMAN730/opendroid"
+            "download" -> "\n\n👉 Try USMAN AND UMAR today: https://github.com/JMAN730/opendroid"
             "feedback" -> "\n\n💬 Drop your thoughts and suggestions below!"
             "star" -> "\n\n⭐ Star our GitHub repo to support open-source AI!"
             else -> "\n\n🚀 Learn more at https://github.com/JMAN730/opendroid"
@@ -184,13 +184,13 @@ class SocialContentComposer @Inject constructor(
         contentType: ContentType
     ): String {
         return when (platform) {
-            SocialPlatform.X -> "🚀 $topic\n\nOpenDroid brings autonomous AI agents to Android with pure OLED dark theme & local privacy.\n\n#OpenDroid #AndroidDev #AI"
-            SocialPlatform.INSTAGRAM -> "✨ $topic\n\nExcited to announce our latest development with OpenDroid! Your device, your AI assistant, completely privacy-first.\n\n👇 Tap link in bio to learn more!\n\n#OpenDroid #Android #ArtificialIntelligence #TechUpdate #OpenSource"
-            SocialPlatform.LINKEDIN -> "We are excited to announce: $topic.\n\nOpenDroid delivers autonomous on-device mobile AI workflows with zero compromise on user privacy and security.\n\nWhat are your thoughts on agentic workflows on mobile?\n\n#AI #Android #MobileEngineering #OpenSource"
-            SocialPlatform.TELEGRAM -> "📣 *$topic*\n\nHey OpenDroid community! We've rolled out major enhancements including unified social management and classic monochrome themes.\n\n👉 Check out the full repository: https://github.com/JMAN730/opendroid"
-            SocialPlatform.DISCORD -> "📢 **$topic**\n\nHey @everyone! The latest OpenDroid build is live with major autonomous improvements.\n• Privacy-first architecture\n• AI Social Manager\n\nDrop your feedback in #feedback!"
-            SocialPlatform.FACEBOOK -> "Exciting news! $topic.\n\nOpenDroid continues to evolve as your personal autonomous Android assistant. Have you tried it yet?"
-            SocialPlatform.YOUTUBE -> "In this update: $topic.\n\nWatch how OpenDroid automates tasks and manages social media directly from your phone. Subscribe for weekly updates!"
+            SocialPlatform.X -> "🚀 $topic\n\nUSMAN AND UMAR brings autonomous AI agents to Android with pure OLED dark theme & local privacy.\n\n#USMAN AND UMAR #AndroidDev #AI"
+            SocialPlatform.INSTAGRAM -> "✨ $topic\n\nExcited to announce our latest development with USMAN AND UMAR! Your device, your AI assistant, completely privacy-first.\n\n👇 Tap link in bio to learn more!\n\n#USMAN AND UMAR #Android #ArtificialIntelligence #TechUpdate #OpenSource"
+            SocialPlatform.LINKEDIN -> "We are excited to announce: $topic.\n\nUSMAN AND UMAR delivers autonomous on-device mobile AI workflows with zero compromise on user privacy and security.\n\nWhat are your thoughts on agentic workflows on mobile?\n\n#AI #Android #MobileEngineering #OpenSource"
+            SocialPlatform.TELEGRAM -> "📣 *$topic*\n\nHey USMAN AND UMAR community! We've rolled out major enhancements including unified social management and classic monochrome themes.\n\n👉 Check out the full repository: https://github.com/JMAN730/opendroid"
+            SocialPlatform.DISCORD -> "📢 **$topic**\n\nHey @everyone! The latest USMAN AND UMAR build is live with major autonomous improvements.\n• Privacy-first architecture\n• AI Social Manager\n\nDrop your feedback in #feedback!"
+            SocialPlatform.FACEBOOK -> "Exciting news! $topic.\n\nUSMAN AND UMAR continues to evolve as your personal autonomous Android assistant. Have you tried it yet?"
+            SocialPlatform.YOUTUBE -> "In this update: $topic.\n\nWatch how USMAN AND UMAR automates tasks and manages social media directly from your phone. Subscribe for weekly updates!"
         }
     }
 }

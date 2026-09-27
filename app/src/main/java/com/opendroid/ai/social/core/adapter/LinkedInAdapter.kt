@@ -32,7 +32,7 @@ class LinkedInAdapter @Inject constructor(
                 SocialAccountInfo(
                     id = "li_${credentials.accountId.ifBlank { "opendroid_corp" }}",
                     username = "opendroid-ai",
-                    displayName = "OpenDroid Autonomous AI",
+                    displayName = "USMAN AND UMAR Autonomous AI",
                     avatarUrl = null,
                     grantedPermissions = supportedPermissions
                 )
@@ -117,7 +117,7 @@ class LinkedInAdapter @Inject constructor(
                         type = InteractionType.DIRECT_MESSAGE,
                         category = InteractionCategory.COLLABORATION,
                         priority = InteractionPriority.HIGH,
-                        content = "We are interested in licensing OpenDroid's autonomous on-device workflow engine for our mobile fleet.",
+                        content = "We are interested in licensing USMAN AND UMAR's autonomous on-device workflow engine for our mobile fleet.",
                         timestamp = System.currentTimeMillis() - 86400_000,
                         status = "UNREAD",
                         suggestedAction = "Draft partnership response"

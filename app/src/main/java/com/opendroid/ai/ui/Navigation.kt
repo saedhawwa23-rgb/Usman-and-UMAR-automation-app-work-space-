@@ -57,6 +57,7 @@ object OpenDroidRoutes {
     const val ROUTINES = "routines"
     const val SOCIAL = "social"
     const val DISCOVERY = "discovery"
+    const val GITHUB_DISCOVERY = "github_discovery"
     const val TERMUX = "termux"
 }
 
@@ -176,6 +177,9 @@ fun OpenDroidNavigation(
                 onNavigateToDiscovery = {
                     navController.navigate(OpenDroidRoutes.DISCOVERY)
                 },
+                onNavigateToGitHubDiscovery = {
+                    navController.navigate(OpenDroidRoutes.GITHUB_DISCOVERY)
+                },
                 onNavigateToTermux = {
                     navController.navigate(OpenDroidRoutes.TERMUX)
                 }
@@ -287,6 +291,15 @@ fun OpenDroidNavigation(
         composable(OpenDroidRoutes.DISCOVERY) {
             DiscoveryScreen(
                 viewModel = hiltViewModel(),
+                initialTab = 0,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(OpenDroidRoutes.GITHUB_DISCOVERY) {
+            DiscoveryScreen(
+                viewModel = hiltViewModel(),
+                initialTab = 1,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -305,6 +318,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Plan : Screen("plan", "Plan", Icons.Default.List)
     object Memory : Screen("memory", "Memory", Icons.Default.Star)
     object Social : Screen("social", "Social", Icons.Default.Share)
+    object Tools : Screen("tools", "Tools", Icons.Default.Extension)
     object Macros : Screen("macros", "Macros", Icons.Default.Build)
     object History : Screen("history", "Logs", Icons.Default.History)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
@@ -324,6 +338,7 @@ fun MainDashboard(
     onNavigateToCrashLog: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToDiscovery: () -> Unit = {},
+    onNavigateToGitHubDiscovery: () -> Unit = {},
     onNavigateToTermux: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -365,6 +380,7 @@ fun MainDashboard(
         Screen.Plan,
         Screen.Memory,
         Screen.Social,
+        Screen.Tools,
         Screen.Macros,
         Screen.History,
         Screen.Settings
@@ -441,6 +457,11 @@ fun MainDashboard(
                     Screen.Plan -> PlanScreen(viewModel = planViewModel)
                     Screen.Memory -> MemoryScreen(viewModel = memoryViewModel)
                     Screen.Social -> SocialScreen(viewModel = socialViewModel)
+                    Screen.Tools -> CapabilitiesScreen(
+                        onSearchAI = onNavigateToDiscovery,
+                        onSearchGitHub = onNavigateToGitHubDiscovery,
+                        onTermux = onNavigateToTermux
+                    )
                     Screen.Macros -> MacrosScreen(
                         viewModel = macroViewModel,
                         onNavigateToRoutines = onNavigateToRoutines
@@ -460,6 +481,7 @@ fun MainDashboard(
                         onNavigateToCrashLog = onNavigateToCrashLog,
                         onNavigateToRoutines = onNavigateToRoutines,
                         onNavigateToDiscovery = onNavigateToDiscovery,
+                        onNavigateToGitHubDiscovery = onNavigateToGitHubDiscovery,
                         onNavigateToTermux = onNavigateToTermux
                     )
                 }

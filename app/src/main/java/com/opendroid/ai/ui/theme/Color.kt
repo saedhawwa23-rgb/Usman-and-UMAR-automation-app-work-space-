@@ -8,7 +8,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
 /**
- * OpenDroid color palette — resolved via CompositionLocal so all screens
+ * USMAN AND UMAR color palette — resolved via CompositionLocal so all screens
  * automatically adapt to the active theme (light / dark).
  */
 data class OpenDroidColors(

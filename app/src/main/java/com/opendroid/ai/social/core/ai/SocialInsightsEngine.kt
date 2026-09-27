@@ -85,7 +85,7 @@ class SocialInsightsEngine @Inject constructor(
             insights.add(
                 SocialInsight(
                     id = UUID.randomUUID().toString(),
-                    observedData = "OpenDroid AI Social Media Center is initialized and monitoring your accounts.",
+                    observedData = "USMAN AND UMAR AI Social Media Center is initialized and monitoring your accounts.",
                     calculatedInsight = "Historical baseline data is currently accumulating.",
                     aiRecommendation = "Publish 3-5 posts and connect your primary accounts to unlock personalized deep performance correlations.",
                     category = "BASELINE",

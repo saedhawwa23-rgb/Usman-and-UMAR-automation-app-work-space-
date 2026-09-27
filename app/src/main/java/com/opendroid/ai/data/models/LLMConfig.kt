@@ -57,7 +57,7 @@ data class LLMConfig(
     val dynamicAIProviders: List<DynamicAIProvider> = emptyList(),
     /** GitHub projects the user explicitly marked as supported tools. */
     val supportedGitHubProjects: List<GitHubProject> = emptyList(),
-    /** Project context selected for the next OpenDroid workflow. */
+    /** Project context selected for the next USMAN AND UMAR workflow. */
     val activeGitHubProjectId: Long? = null
 )
 

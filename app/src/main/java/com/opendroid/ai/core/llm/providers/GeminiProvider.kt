@@ -136,7 +136,7 @@ class GeminiProvider @Inject constructor(
               "speech": "I have set up a quick on-device task flow.",
               "type": "SIMPLE",
               "action": "WEB_SEARCH",
-              "params": {"query": "OpenDroid on-device response"},
+              "params": {"query": "USMAN AND UMAR on-device response"},
               "plan": null,
               "memoryUpdate": null,
               "confidence": 0.95,
@@ -145,7 +145,7 @@ class GeminiProvider @Inject constructor(
             }
             """.trimIndent()
         } else {
-            "OpenDroid on-device Gemini Nano mock completed successfully."
+            "USMAN AND UMAR on-device Gemini Nano mock completed successfully."
         }
 
         return LLMResponse(

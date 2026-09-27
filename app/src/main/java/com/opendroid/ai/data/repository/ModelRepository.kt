@@ -210,7 +210,7 @@ class ModelRepository @Inject constructor(
             val displayName = resolveDisplayName(uri)
             if (ModelStoragePaths.isLikelyUnsupportedGguf(displayName)) {
                 return@withContext ImportLocalModelResult.Failure(
-                    "GGUF is not supported. OpenDroid on-device models must be LiteRT (.task or .litertlm). " +
+                    "GGUF is not supported. USMAN AND UMAR on-device models must be LiteRT (.task or .litertlm). " +
                         "Convert the model or pick a LiteRT build from Hugging Face litert-community."
                 )
             }

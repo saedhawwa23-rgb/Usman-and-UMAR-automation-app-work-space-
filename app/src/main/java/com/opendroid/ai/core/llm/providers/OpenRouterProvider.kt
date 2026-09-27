@@ -58,7 +58,7 @@ class OpenRouterProvider @Inject constructor(
             .url("https://openrouter.ai/api/v1/chat/completions")
             .header("Authorization", "Bearer $apiKey")
             .header("HTTP-Referer", "https://opendroid.ai")
-            .header("X-Title", "OpenDroid")
+            .header("X-Title", "USMAN AND UMAR")
             .post(bodyJson.toRequestBody(mediaType))
             .build()
 

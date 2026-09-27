@@ -311,7 +311,7 @@ internal object ModelListParsers {
 
     /**
      * Anthropic's list is authoritative for *which* models exist; the catalog
-     * only supplies display names and badges for the ones OpenDroid knows, so a
+     * only supplies display names and badges for the ones USMAN AND UMAR knows, so a
      * model released today is still listed and selectable.
      */
     fun anthropic(json: JSONObject, provider: String): List<AIModel> {

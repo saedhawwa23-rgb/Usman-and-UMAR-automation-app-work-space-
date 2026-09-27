@@ -34,7 +34,7 @@ class DiscordAdapter @Inject constructor(
                 SocialAccountInfo(
                     id = "dc_${credentials.accountId.ifBlank { "opendroid_server" }}",
                     username = "OpenDroidCommunity",
-                    displayName = "OpenDroid Discord",
+                    displayName = "USMAN AND UMAR Discord",
                     avatarUrl = null,
                     grantedPermissions = supportedPermissions
                 )
@@ -132,7 +132,7 @@ class DiscordAdapter @Inject constructor(
                         type = InteractionType.MENTION,
                         category = InteractionCategory.FEATURE_REQUEST,
                         priority = InteractionPriority.HIGH,
-                        content = "Could OpenDroid integrate with custom local Ollama models over LAN?",
+                        content = "Could USMAN AND UMAR integrate with custom local Ollama models over LAN?",
                         timestamp = System.currentTimeMillis() - 7200_000,
                         status = "UNREAD",
                         suggestedAction = "Confirm Ollama HTTP URL support in settings"

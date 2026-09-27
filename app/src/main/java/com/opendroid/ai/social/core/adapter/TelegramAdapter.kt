@@ -33,7 +33,7 @@ class TelegramAdapter @Inject constructor(
                 SocialAccountInfo(
                     id = "tg_${credentials.accountId.ifBlank { "opendroid_bot" }}",
                     username = "OpenDroidBot",
-                    displayName = "OpenDroid Assistant",
+                    displayName = "USMAN AND UMAR Assistant",
                     avatarUrl = null,
                     grantedPermissions = supportedPermissions
                 )
@@ -115,7 +115,7 @@ class TelegramAdapter @Inject constructor(
                         type = InteractionType.DIRECT_MESSAGE,
                         category = InteractionCategory.QUESTION,
                         priority = InteractionPriority.NORMAL,
-                        content = "Does OpenDroid v1.1 support offline local models?",
+                        content = "Does USMAN AND UMAR v1.1 support offline local models?",
                         timestamp = System.currentTimeMillis() - 3600_000,
                         status = "UNREAD",
                         suggestedAction = "Draft response confirming LiteRT on-device support"
@@ -173,7 +173,7 @@ class TelegramAdapter @Inject constructor(
                         platform = SocialPlatform.TELEGRAM,
                         authorName = "DevDan",
                         authorAvatarUrl = null,
-                        content = "When is the official rollout for OpenDroid?",
+                        content = "When is the official rollout for USMAN AND UMAR?",
                         timestamp = System.currentTimeMillis() - 1800_000,
                         sentiment = Sentiment.POSITIVE,
                         category = InteractionCategory.QUESTION,

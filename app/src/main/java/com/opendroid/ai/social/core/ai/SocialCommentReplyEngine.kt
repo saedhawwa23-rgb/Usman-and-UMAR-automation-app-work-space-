@@ -44,7 +44,7 @@ open class SocialCommentReplyEngine {
             .joinToString("\n") { "${it.key}: ${it.value}" }
 
         val prompt = """
-            You are OpenDroid's AI social media assistant.
+            You are USMAN AND UMAR's AI social media assistant.
             Generate a concise, friendly, and grounded reply to the following comment.
             
             Platform: ${comment.platform.displayName}
@@ -85,7 +85,7 @@ open class SocialCommentReplyEngine {
                 replyText = reply,
                 isConfident = isKnown,
                 confidenceScore = confidence,
-                reason = if (isKnown) "Grounded in OpenDroid features" else "Answer unknown; flagged for human review"
+                reason = if (isKnown) "Grounded in USMAN AND UMAR features" else "Answer unknown; flagged for human review"
             )
         } catch (e: Exception) {
             fallbackReply(comment)
@@ -97,7 +97,7 @@ open class SocialCommentReplyEngine {
         return when {
             text.contains("when") && (text.contains("release") || text.contains("v1.1") || text.contains("update")) -> {
                 SuggestedReply(
-                    replyText = "OpenDroid v1.1 is coming soon! We'll announce the official release date right here 🚀",
+                    replyText = "USMAN AND UMAR v1.1 is coming soon! We'll announce the official release date right here 🚀",
                     isConfident = true,
                     confidenceScore = 0.94f,
                     reason = "Standard release inquiry"
@@ -113,7 +113,7 @@ open class SocialCommentReplyEngine {
             }
             text.contains("offline") || text.contains("privacy") -> {
                 SuggestedReply(
-                    replyText = "Yes! OpenDroid runs local LiteRT on-device models with complete offline privacy 🛡️",
+                    replyText = "Yes! USMAN AND UMAR runs local LiteRT on-device models with complete offline privacy 🛡️",
                     isConfident = true,
                     confidenceScore = 0.95f,
                     reason = "Privacy & on-device core architecture"

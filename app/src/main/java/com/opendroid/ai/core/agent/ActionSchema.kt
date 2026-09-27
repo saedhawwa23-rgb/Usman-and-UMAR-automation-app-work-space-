@@ -548,7 +548,7 @@ object ActionSchema {
         ),
         ActionDefinition(
             name = "RECALL_MEMORY",
-            description = "Searches saved notes, screen memories, and facts previously stored by OpenDroid.",
+            description = "Searches saved notes, screen memories, and facts previously stored by USMAN AND UMAR.",
             params = listOf(
                 ParamDefinition("query", ParamType.STRING, true, "Search query or topic to recall")
             ),
@@ -1306,7 +1306,7 @@ object ActionSchema {
                 ParamDefinition("tone", ParamType.ENUM, false, "Tone of the post", listOf("professional", "casual", "excited", "technical", "minimal"), defaultValue = "professional")
             ),
             examples = listOf(
-                "create a post announcing OpenDroid v1.1", "write an announcement for OpenDroid",
+                "create a post announcing USMAN AND UMAR v1.1", "write an announcement for USMAN AND UMAR",
                 "draft an instagram post about the new release", "post on x about our update"
             ),
             category = ActionCategory.SOCIAL
@@ -1359,13 +1359,13 @@ object ActionSchema {
             name = "SOCIAL_CREATE_CAMPAIGN",
             description = "Generates an end-to-end multi-platform marketing campaign strategy with scheduled post drafts",
             params = listOf(
-                ParamDefinition("name", ParamType.STRING, false, "Campaign name", defaultValue = "OpenDroid Launch"),
+                ParamDefinition("name", ParamType.STRING, false, "Campaign name", defaultValue = "USMAN AND UMAR Launch"),
                 ParamDefinition("objective", ParamType.STRING, false, "Core campaign objective", defaultValue = "Drive adoption and awareness"),
                 ParamDefinition("days", ParamType.INT, false, "Duration in days", defaultValue = 7)
             ),
             examples = listOf(
-                "create a campaign for the next OpenDroid release",
-                "create a one-week campaign for OpenDroid v1.1",
+                "create a campaign for the next USMAN AND UMAR release",
+                "create a one-week campaign for USMAN AND UMAR v1.1",
                 "plan a social media campaign"
             ),
             category = ActionCategory.SOCIAL

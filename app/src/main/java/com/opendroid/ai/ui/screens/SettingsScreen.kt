@@ -79,6 +79,7 @@ fun SettingsScreen(
     onNavigateToCrashLog: () -> Unit = {},
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToDiscovery: () -> Unit = {},
+    onNavigateToGitHubDiscovery: () -> Unit = {},
     onNavigateToTermux: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {

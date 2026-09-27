@@ -18,7 +18,7 @@ import androidx.core.view.WindowCompat
  * Applies edge-to-edge using the app's selected theme rather than the device's system theme.
  *
  * AndroidX uses the system UI mode to select the API 26-28 navigation-bar scrim by default.
- * OpenDroid supports an in-app theme toggle, so use the selected palette instead. On API 29+
+ * USMAN AND UMAR supports an in-app theme toggle, so use the selected palette instead. On API 29+
  * [SystemBarStyle.auto] keeps both bars transparent, preserving edge-to-edge behavior.
  */
 internal fun ComponentActivity.enableOpenDroidEdgeToEdge(isDarkTheme: Boolean) {

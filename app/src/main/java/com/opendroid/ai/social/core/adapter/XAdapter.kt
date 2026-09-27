@@ -33,7 +33,7 @@ class XAdapter @Inject constructor(
                 SocialAccountInfo(
                     id = "x_${credentials.accountId.ifBlank { "opendroid_ai" }}",
                     username = "OpenDroidAI",
-                    displayName = "OpenDroid AI",
+                    displayName = "USMAN AND UMAR AI",
                     avatarUrl = null,
                     grantedPermissions = supportedPermissions
                 )

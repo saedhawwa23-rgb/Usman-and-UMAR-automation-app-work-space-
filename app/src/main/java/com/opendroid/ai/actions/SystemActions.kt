@@ -373,7 +373,7 @@ class SystemActions @Inject constructor(
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)
-                    ActionResult(false, "I need your permission to change system settings. I've opened the settings page — just flip the switch to allow OpenDroid, then try again!", null, true)
+                    ActionResult(false, "I need your permission to change system settings. I've opened the settings page — just flip the switch to allow USMAN AND UMAR, then try again!", null, true)
                 }
             } catch (e: Exception) {
                 Log.e("SetBrightness", "Brightness failed: ${e.localizedMessage}")
@@ -1106,7 +1106,7 @@ class SystemActions @Inject constructor(
             val text = params["text"] ?: return ActionResult(false, null, "No text provided to copy")
             return try {
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("OpenDroid", text)
+                val clip = android.content.ClipData.newPlainText("USMAN AND UMAR", text)
                 clipboard.setPrimaryClip(clip)
                 ActionResult(true, "Copied to clipboard: \"${text.take(50)}${if (text.length > 50) "..." else ""}\"", null)
             } catch (e: Exception) {
