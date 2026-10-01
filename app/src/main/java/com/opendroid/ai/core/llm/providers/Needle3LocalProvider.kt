@@ -22,6 +22,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,7 +59,15 @@ class Needle3LocalProvider @Inject constructor(
         messages: List<ChatMessage>,
         tools: List<com.opendroid.ai.core.llm.ToolDefinition>
     ): Flow<StreamChunk> = flow {
-        val response = runtime.complete(messages.joinToString("\n") { it.text }, 512)
+        val schema = JSONArray().apply {
+            tools.forEach { tool ->
+                put(JSONObject()
+                    .put("name", tool.name)
+                    .put("description", tool.description)
+                    .put("parameters", JSONObject(tool.parameters)))
+            }
+        }.toString()
+        val response = runtime.completeWithTools(messages.joinToString("\n") { it.text }, schema, 512)
         emit(StreamChunk.Content(response))
         parseCalls(response).forEach { call ->
             emit(StreamChunk.ToolCall(call.first, call.second))

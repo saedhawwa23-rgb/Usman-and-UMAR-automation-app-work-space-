@@ -66,6 +66,20 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
         }
     }
 
+    suspend fun completeWithTools(input: String, toolsJson: String, maxNewTokens: Int = 256): String =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                ensureNativeSupported()
+                val model = modelFile()
+                if (!model.isFile || sha256(model) != MODEL_SHA256) {
+                    throw IllegalStateException("Needle 3 is not installed. Tap Install locally first.")
+                }
+                loadForTools(model, toolsJson)
+                Needle3Native.complete(input, maxNewTokens)
+                    ?: throw IllegalStateException(Needle3Native.lastError().ifBlank { "Needle 3 completion failed" })
+            }
+        }
+
     suspend fun diagnosticToolCall(): String {
         val response = complete("Get the current system information.")
         val root = JSONObject(response)
@@ -95,7 +109,10 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
     }
 
     private fun loadForCurrentTools(model: File) {
-        val tools = Needle3ToolSchema.json()
+        loadForTools(model, Needle3ToolSchema.json())
+    }
+
+    private fun loadForTools(model: File, tools: String) {
         val hash = sha256Bytes(tools.toByteArray(Charsets.UTF_8))
         if (initializedToolsHash == hash) return
         if (!Needle3Native.load(model.readBytes())) {

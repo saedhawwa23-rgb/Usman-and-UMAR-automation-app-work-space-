@@ -36,7 +36,8 @@ fun CapabilitiesScreen(
     onSearchAI: () -> Unit,
     onSearchGitHub: () -> Unit,
     onTermux: () -> Unit,
-    onNeedle3: () -> Unit
+    onNeedle3: () -> Unit,
+    onUniversalAgent: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -77,6 +78,12 @@ fun CapabilitiesScreen(
             description = "Load Needle 3 on-device and run structured tool calls without Gemini or a cloud API.",
             icon = Icons.Default.Extension,
             onClick = onNeedle3
+        )
+        CapabilityCard(
+            title = "UNIVERSAL LOCAL AGENT",
+            description = "Orchestrate MCP, REST, OAuth, CLI, webhook, developer, cloud, and hosting connectors with Needle 3.",
+            icon = Icons.Default.Extension,
+            onClick = onUniversalAgent
         )
     }
 }

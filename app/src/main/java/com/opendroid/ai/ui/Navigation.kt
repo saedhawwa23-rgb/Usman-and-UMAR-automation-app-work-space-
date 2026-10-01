@@ -60,6 +60,7 @@ object OpenDroidRoutes {
     const val GITHUB_DISCOVERY = "github_discovery"
     const val TERMUX = "termux"
     const val NEEDLE3 = "needle3"
+    const val UNIVERSAL_AGENT = "universal_agent"
 }
 
 /**
@@ -186,6 +187,9 @@ fun OpenDroidNavigation(
                 },
                 onNavigateToNeedle3 = {
                     navController.navigate(OpenDroidRoutes.NEEDLE3)
+                },
+                onNavigateToUniversalAgent = {
+                    navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT)
                 }
             )
         }
@@ -318,6 +322,10 @@ fun OpenDroidNavigation(
         composable(OpenDroidRoutes.NEEDLE3) {
             Needle3Screen()
         }
+
+        composable(OpenDroidRoutes.UNIVERSAL_AGENT) {
+            UniversalAgentScreen()
+        }
     }
 }
 
@@ -348,7 +356,8 @@ fun MainDashboard(
     onNavigateToDiscovery: () -> Unit = {},
     onNavigateToGitHubDiscovery: () -> Unit = {},
     onNavigateToTermux: () -> Unit = {},
-    onNavigateToNeedle3: () -> Unit = {}
+    onNavigateToNeedle3: () -> Unit = {},
+    onNavigateToUniversalAgent: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -470,7 +479,8 @@ fun MainDashboard(
                         onSearchAI = onNavigateToDiscovery,
                         onSearchGitHub = onNavigateToGitHubDiscovery,
                         onTermux = onNavigateToTermux,
-                        onNeedle3 = onNavigateToNeedle3
+                        onNeedle3 = onNavigateToNeedle3,
+                        onUniversalAgent = onNavigateToUniversalAgent
                     )
                     Screen.Macros -> MacrosScreen(
                         viewModel = macroViewModel,
