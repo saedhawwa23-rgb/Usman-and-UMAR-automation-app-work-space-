@@ -59,6 +59,7 @@ object OpenDroidRoutes {
     const val DISCOVERY = "discovery"
     const val GITHUB_DISCOVERY = "github_discovery"
     const val TERMUX = "termux"
+    const val NEEDLE3 = "needle3"
 }
 
 /**
@@ -182,6 +183,9 @@ fun OpenDroidNavigation(
                 },
                 onNavigateToTermux = {
                     navController.navigate(OpenDroidRoutes.TERMUX)
+                },
+                onNavigateToNeedle3 = {
+                    navController.navigate(OpenDroidRoutes.NEEDLE3)
                 }
             )
         }
@@ -310,6 +314,10 @@ fun OpenDroidNavigation(
                 onBack = { navController.popBackStack() }
             )
         }
+
+        composable(OpenDroidRoutes.NEEDLE3) {
+            Needle3Screen()
+        }
     }
 }
 
@@ -339,7 +347,8 @@ fun MainDashboard(
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToDiscovery: () -> Unit = {},
     onNavigateToGitHubDiscovery: () -> Unit = {},
-    onNavigateToTermux: () -> Unit = {}
+    onNavigateToTermux: () -> Unit = {},
+    onNavigateToNeedle3: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -460,7 +469,8 @@ fun MainDashboard(
                     Screen.Tools -> CapabilitiesScreen(
                         onSearchAI = onNavigateToDiscovery,
                         onSearchGitHub = onNavigateToGitHubDiscovery,
-                        onTermux = onNavigateToTermux
+                        onTermux = onNavigateToTermux,
+                        onNeedle3 = onNavigateToNeedle3
                     )
                     Screen.Macros -> MacrosScreen(
                         viewModel = macroViewModel,

@@ -21,7 +21,7 @@ import androidx.core.view.WindowCompat
  * USMAN AND UMAR supports an in-app theme toggle, so use the selected palette instead. On API 29+
  * [SystemBarStyle.auto] keeps both bars transparent, preserving edge-to-edge behavior.
  */
-internal fun ComponentActivity.enableOpenDroidEdgeToEdge(isDarkTheme: Boolean) {
+internal fun ComponentActivity.enableUsmanAndUmarEdgeToEdge(isDarkTheme: Boolean) {
     enableEdgeToEdge(
         statusBarStyle = SystemBarStyle.auto(
             lightScrim = Color.TRANSPARENT,
@@ -35,6 +35,12 @@ internal fun ComponentActivity.enableOpenDroidEdgeToEdge(isDarkTheme: Boolean) {
         )
     )
 }
+
+// Source-compatibility alias for existing package-local tests and integrations.
+// Runtime call sites and the user-facing theme use UsmanAndUmarTheme.
+@Suppress("UNUSED")
+internal fun ComponentActivity.enableOpenDroidEdgeToEdge(isDarkTheme: Boolean) =
+    enableUsmanAndUmarEdgeToEdge(isDarkTheme)
 
 private val DarkColorScheme = darkColorScheme(
     primary = DarkPalette.accentNeonGreen,
@@ -63,7 +69,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun OpenDroidTheme(
+fun UsmanAndUmarTheme(
     isDarkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -74,7 +80,7 @@ fun OpenDroidTheme(
     val activity = view.context as? ComponentActivity
     if (!view.isInEditMode && activity != null) {
         SideEffect {
-            activity.enableOpenDroidEdgeToEdge(isDarkTheme)
+            activity.enableUsmanAndUmarEdgeToEdge(isDarkTheme)
             val window = activity.window
             val insetsController = WindowCompat.getInsetsController(window, view)
             // Light status bar icons for dark theme, dark icons for light theme

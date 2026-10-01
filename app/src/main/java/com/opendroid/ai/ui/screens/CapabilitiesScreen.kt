@@ -35,7 +35,8 @@ import com.opendroid.ai.ui.theme.AppTheme
 fun CapabilitiesScreen(
     onSearchAI: () -> Unit,
     onSearchGitHub: () -> Unit,
-    onTermux: () -> Unit
+    onTermux: () -> Unit,
+    onNeedle3: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -70,6 +71,12 @@ fun CapabilitiesScreen(
             description = "Check Termux and run only the supported allowlisted tasks with visible results.",
             icon = Icons.Default.Terminal,
             onClick = onTermux
+        )
+        CapabilityCard(
+            title = "NEEDLE 3 LOCAL",
+            description = "Load Needle 3 on-device and run structured tool calls without Gemini or a cloud API.",
+            icon = Icons.Default.Extension,
+            onClick = onNeedle3
         )
     }
 }

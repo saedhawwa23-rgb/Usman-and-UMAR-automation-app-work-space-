@@ -15,8 +15,8 @@ import com.opendroid.ai.core.service.OpenDroidService
 import com.opendroid.ai.data.repository.SettingsRepository
 import com.opendroid.ai.ui.OpenDroidNavigation
 import com.opendroid.ai.ui.theme.AppTheme
-import com.opendroid.ai.ui.theme.OpenDroidTheme
-import com.opendroid.ai.ui.theme.enableOpenDroidEdgeToEdge
+import com.opendroid.ai.ui.theme.UsmanAndUmarTheme
+import com.opendroid.ai.ui.theme.enableUsmanAndUmarEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableOpenDroidEdgeToEdge(isDarkTheme = true)
+        enableUsmanAndUmarEdgeToEdge(isDarkTheme = true)
         super.onCreate(savedInstanceState)
 
         // Start foreground assistant service only if RECORD_AUDIO permission is granted
@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
                 initial = com.opendroid.ai.data.models.LLMConfig()
             )
 
-            OpenDroidTheme(isDarkTheme = config.isDarkMode) {
+            UsmanAndUmarTheme(isDarkTheme = config.isDarkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = AppTheme.colors.background

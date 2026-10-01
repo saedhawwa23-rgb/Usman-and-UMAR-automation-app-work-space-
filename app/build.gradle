@@ -22,9 +22,9 @@ android {
         versionCode 3
         versionName "1.0.2"
         ndk {
-            // Distribution and normal debug APKs remain 32-bit ARM only.
+            // Keep ARMv7 distribution compatibility and add ARM64 for Needle 3.
             // CI's hosted x86_64 emulators use this explicit test-only override.
-            abiFilters instrumentedTestAbi ?: "armeabi-v7a"
+            abiFilters instrumentedTestAbi ?: "armeabi-v7a", "arm64-v8a"
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -113,6 +113,12 @@ android {
         // BuildConfig.VERSION_NAME is the single source of the version string the
         // About screen displays; AGP 9 does not generate BuildConfig unless asked.
         buildConfig = true
+    }
+    externalNativeBuild {
+        cmake {
+            path file("src/main/cpp/CMakeLists.txt")
+            version "3.22.1"
+        }
     }
     testOptions {
         unitTests {
