@@ -38,3 +38,7 @@ To add a service, register a `UniversalConnector` and its `ConnectorTool` schema
 ## Current boundary
 
 The universal registry and orchestration path are implemented and unit-tested. A production connector-management UI can register manifests and initiate OAuth takeover flows without changing the core agent. Physical Needle model execution still requires an ARM Android device or emulator with the model installed.
+
+## Cloudflare
+
+Cloudflare is included as a manifest-only cloud connector. It exposes read-only deployment listing and sensitive deployment tools, but it starts as **Not Connected** when no credential exists. The Connect Cloudflare flow stores a user-supplied API token only through the existing Keystore-backed credential store; it does not call Cloudflare during connection and does not claim that a deployment or account lookup succeeded. Deployment remains approval-gated.

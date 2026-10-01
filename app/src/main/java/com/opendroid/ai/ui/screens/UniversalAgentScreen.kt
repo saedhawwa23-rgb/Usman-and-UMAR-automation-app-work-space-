@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.UniversalAgentViewModel
@@ -27,7 +29,9 @@ import com.opendroid.ai.ui.viewmodel.UniversalAgentViewModel
 fun UniversalAgentScreen(viewModel: UniversalAgentViewModel = hiltViewModel()) {
     val events by viewModel.events.collectAsState()
     val running by viewModel.running.collectAsState()
+    val cloudflare by viewModel.cloudflareState.collectAsState()
     var goal by remember { mutableStateOf("") }
+    var cloudflareToken by remember { mutableStateOf("") }
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -46,6 +50,24 @@ fun UniversalAgentScreen(viewModel: UniversalAgentViewModel = hiltViewModel()) {
         )
         Button(onClick = { viewModel.run(goal) }, enabled = goal.isNotBlank() && !running) {
             Text(if (running) "RUNNING LOCALLY…" else "RUN WITH NEEDLE 3")
+        }
+        Text("CLOUDFLARE CONNECTOR", color = AppTheme.colors.textPrimary, fontSize = 16.sp)
+        Text("Status: ${cloudflare.status}", color = AppTheme.colors.textSecondary)
+        Text(cloudflare.message, color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+        if (cloudflare.status.name == "CONNECTED") {
+            TextButton(onClick = viewModel::disconnectCloudflare) { Text("DISCONNECT CLOUDFLARE") }
+        } else {
+            OutlinedTextField(
+                value = cloudflareToken,
+                onValueChange = { cloudflareToken = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Cloudflare API token") },
+                visualTransformation = PasswordVisualTransformation()
+            )
+            Button(
+                onClick = { viewModel.connectCloudflare(cloudflareToken); cloudflareToken = "" },
+                enabled = cloudflareToken.isNotBlank()
+            ) { Text("CONNECT CLOUDFLARE") }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(events) { event ->
