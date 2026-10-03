@@ -13,9 +13,11 @@ The app runs natively on Android and uses Android Accessibility Services for scr
 | Minimum Android SDK | 28 (Android 9) |
 | Target Android SDK | 34 (Android 14) |
 | Release version | 1.0.2, versionCode 3 |
-| Native ABI | `armeabi-v7a` |
-| APK packaging | 32-bit ARM APK |
+| Native ABI | `armeabi-v7a`, `arm64-v8a` |
+| APK packaging | Universal ARM APK |
 | Primary control channel | Android Accessibility Service |
+
+Official Samsung target profiles and the physical-device validation matrix are documented in [Supported devices](docs/SUPPORTED_DEVICES.md). Galaxy M10 devices must be updated to Android 9 or later because the current `minSdk` is API 28; the original Android 8.1/API 27 firmware is outside this release's install range.
 
 ## Build
 
