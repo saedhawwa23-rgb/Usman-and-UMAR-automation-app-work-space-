@@ -1,6 +1,7 @@
 package com.opendroid.ai.core.connector
 
 import com.opendroid.ai.core.llm.ToolDefinition
+import com.opendroid.ai.core.needle.Needle3Status
 import com.opendroid.ai.core.llm.providers.Needle3LocalProvider
 import com.opendroid.ai.core.security.CredentialStoreResult
 import com.opendroid.ai.core.security.ProviderCredentialId
@@ -63,17 +64,35 @@ class UniversalLocalAgent @Inject constructor(
     suspend fun run(goal: String, maxSteps: Int = 12): UniversalAgentResult {
         require(goal.isNotBlank()) { "Goal must not be blank" }
         val events = mutableListOf<UniversalAgentEvent>()
-        if (!needle.isAvailable()) {
-            return UniversalAgentResult(
-                completed = false,
-                events = listOf(
-                    UniversalAgentEvent(
-                        "error",
-                        "Needle 3 is not ready. Install or load the local model before running an agent task."
-                    )
+        events += UniversalAgentEvent("engine", "Needle 3 (Local) is installing or initializing")
+        when (val readiness = needle.ensureReady()) {
+            is Needle3Status.Ready -> Unit
+            is Needle3Status.Error -> {
+                return UniversalAgentResult(
+                    completed = false,
+                    events = events + UniversalAgentEvent("error", "Needle 3 is not ready: ${readiness.message}")
                 )
-            )
+            }
+            is Needle3Status.Unsupported -> {
+                return UniversalAgentResult(
+                    completed = false,
+                    events = events + UniversalAgentEvent("error", "Needle 3 is not ready: ${readiness.message}")
+                )
+            }
+            Needle3Status.NotInstalled -> {
+                return UniversalAgentResult(
+                    completed = false,
+                    events = events + UniversalAgentEvent("error", "Needle 3 is not ready: official model installation did not complete")
+                )
+            }
+            Needle3Status.Loading -> {
+                return UniversalAgentResult(
+                    completed = false,
+                    events = events + UniversalAgentEvent("error", "Needle 3 is not ready: model is still loading")
+                )
+            }
         }
+        events.removeLastOrNull()
         events += UniversalAgentEvent("engine", "Needle 3 (Local) is ready")
         val tools = registry.allTools()
         if (tools.isEmpty()) return UniversalAgentResult(false, events + UniversalAgentEvent("error", "No connectors are registered"))

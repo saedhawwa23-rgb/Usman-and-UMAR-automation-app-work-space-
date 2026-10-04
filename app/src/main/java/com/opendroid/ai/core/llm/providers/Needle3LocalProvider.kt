@@ -6,6 +6,7 @@ import com.opendroid.ai.core.llm.LLMResponse
 import com.opendroid.ai.core.llm.ProviderCatalog
 import com.opendroid.ai.core.llm.StreamChunk
 import com.opendroid.ai.core.needle.Needle3LocalRuntime
+import com.opendroid.ai.core.needle.Needle3Status
 import com.opendroid.ai.data.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -38,7 +39,23 @@ class Needle3LocalProvider @Inject constructor(
     override val name: String = ProviderCatalog.NEEDLE3_LOCAL
     override val availableModels: List<String> = listOf("needle3")
 
+    /** Downloads the official .cact file when needed, verifies it, then initializes native Needle 3. */
+    suspend fun ensureReady(): Needle3Status =
+        if (runtime.status.value is Needle3Status.Ready) runtime.status.value
+        else runtime.installAndLoad()
+
+    private suspend fun requireReady() {
+        when (val status = ensureReady()) {
+            is Needle3Status.Ready -> Unit
+            is Needle3Status.Error -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
+            is Needle3Status.Unsupported -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
+            Needle3Status.NotInstalled -> throw IllegalStateException("Needle 3 is not ready: model installation did not complete")
+            Needle3Status.Loading -> throw IllegalStateException("Needle 3 is not ready: model is still loading")
+        }
+    }
+
     override suspend fun complete(request: LLMRequest): LLMResponse = withContext(Dispatchers.IO) {
+        requireReady()
         val started = System.currentTimeMillis()
         val input = buildInput(request)
         val nativeResponse = runtime.complete(input, request.maxTokens.coerceIn(64, 1024))
@@ -59,6 +76,7 @@ class Needle3LocalProvider @Inject constructor(
         messages: List<ChatMessage>,
         tools: List<com.opendroid.ai.core.llm.ToolDefinition>
     ): Flow<StreamChunk> = flow {
+        requireReady()
         val schema = JSONArray().apply {
             tools.forEach { tool ->
                 put(JSONObject()
