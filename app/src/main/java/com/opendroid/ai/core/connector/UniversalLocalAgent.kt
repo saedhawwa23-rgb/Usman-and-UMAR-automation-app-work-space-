@@ -54,11 +54,29 @@ class UniversalLocalAgent @Inject constructor(
     private val credentials: KeystoreConnectorCredentialResolver,
     private val executionLog: InMemoryConnectorExecutionLog
 ) {
+    init {
+        // Keep discovery available when no external service is connected. These
+        // tools are read-only, local, and never receive a credential.
+        registry.register(LocalRegistryConnector(registry))
+    }
+
     suspend fun run(goal: String, maxSteps: Int = 12): UniversalAgentResult {
         require(goal.isNotBlank()) { "Goal must not be blank" }
         val events = mutableListOf<UniversalAgentEvent>()
+        if (!needle.isAvailable()) {
+            return UniversalAgentResult(
+                completed = false,
+                events = listOf(
+                    UniversalAgentEvent(
+                        "error",
+                        "Needle 3 is not ready. Install or load the local model before running an agent task."
+                    )
+                )
+            )
+        }
+        events += UniversalAgentEvent("engine", "Needle 3 (Local) is ready")
         val tools = registry.allTools()
-        if (tools.isEmpty()) return UniversalAgentResult(false, listOf(UniversalAgentEvent("error", "No connectors are registered")))
+        if (tools.isEmpty()) return UniversalAgentResult(false, events + UniversalAgentEvent("error", "No connectors are registered"))
         val definitions = tools.map { tool ->
             ToolDefinition(tool.qualifiedName, "${tool.description} Connector=${tool.connectorId} Risk=${tool.risk}", tool.parametersJsonSchema)
         }

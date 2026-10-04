@@ -17,10 +17,11 @@ private fun warnCoercion() = runCatching {
 
 @Serializable
 data class LLMConfig(
-    val activeProvider: String = "Google Gemini",
+    /** The local agent is the only provider used for autonomous execution. */
+    val activeProvider: String = ProviderCatalog.NEEDLE3_LOCAL,
     // Read from the catalog rather than repeated here, so one seed cannot drift
     // from the other. It is replaced by the provider's live list on first fetch.
-    val activeModel: String = ProviderCatalog.defaultModel("Google Gemini"),
+    val activeModel: String = ProviderCatalog.defaultModel(ProviderCatalog.NEEDLE3_LOCAL),
     /**
      * Provider/model pairs. `null` means the setting predates this field and is
      * resolved lazily from [activeProvider]/[activeModel] without an upgrade

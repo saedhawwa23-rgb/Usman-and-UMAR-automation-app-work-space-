@@ -245,6 +245,7 @@ fun ProviderConnectionRow(
 }
 
 private fun connectionFailureLabel(error: LLMError): String = when (error) {
+    LLMError.Needle3NotReady -> "Needle 3 not ready"
     LLMError.AuthMissing -> "Key required"
     LLMError.AuthInvalid -> "Invalid key"
     LLMError.QuotaExhausted -> "Quota exhausted"

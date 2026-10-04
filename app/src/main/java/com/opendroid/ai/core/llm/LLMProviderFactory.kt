@@ -2,7 +2,6 @@ package com.opendroid.ai.core.llm
 
 import android.util.Log
 import com.opendroid.ai.actions.ActionDispatcher
-import com.opendroid.ai.core.agent.ActionSchema
 import com.opendroid.ai.core.agent.DeviceStateProvider
 import com.opendroid.ai.core.agent.IntentClassifier
 import com.opendroid.ai.core.agent.QueryComplexity
@@ -78,8 +77,8 @@ class LLMProviderFactory @Inject constructor(
             "LiteRT-LM (On-device)" -> liteRTLMProvider.get()
             ProviderCatalog.NEEDLE3_LOCAL -> needle3LocalProvider.get()
             else -> {
-                Log.w(TAG, "Unknown LLM provider persisted; falling back to Google Gemini.")
-                geminiProvider.get()
+                Log.w(TAG, "Unknown LLM provider persisted; selecting Needle 3 Local.")
+                needle3LocalProvider.get()
             }
         }
         return WrappedLLMProvider(
@@ -90,8 +89,9 @@ class LLMProviderFactory @Inject constructor(
     }
 
     suspend fun getActiveProvider(): LLMProvider {
-        val config = settingsRepository.llmConfig.first()
-        return getProviderByName(ProviderCatalog.canonicalName(config.activeProvider))
+        // Legacy installations may persist Google Gemini, but autonomous agent
+        // execution must never request a cloud API key. Needle 3 is authoritative.
+        return getProviderByName(ProviderCatalog.NEEDLE3_LOCAL)
     }
 
     /**
@@ -100,22 +100,9 @@ class LLMProviderFactory @Inject constructor(
      * contacted; high-impact plans never cross a provider boundary silently.
      */
     suspend fun getPlanningProviders(actionNames: Collection<String>): List<LLMProvider> {
-        val config = settingsRepository.llmConfig.first()
-        val activeName = ProviderCatalog.canonicalName(config.activeProvider)
-        val active = getProviderByName(activeName)
-        val risk = ActionSchema.highestRisk(actionNames)
-        val fallbackNames = ProviderSelectionPolicy.explicitFallbacks(
-            activeProvider = activeName,
-            configuredFallbacks = config.fallbackProviders,
-            risk = risk
-        )
-
-        val availableFallbacks = fallbackNames.mapNotNull { providerName ->
-            if (!isConfigured(config, providerName)) return@mapNotNull null
-            val provider = getProviderByName(providerName)
-            provider.takeIf { runCatching { it.isAvailable() }.getOrDefault(false) }
-        }
-        return listOf(active) + availableFallbacks
+        // Do not consult persisted fallback providers here: older settings can
+        // contain Gemini, but local agent planning has no cloud fallback path.
+        return listOf(getProviderByName(ProviderCatalog.NEEDLE3_LOCAL))
     }
 
     suspend fun recordPlanningLatency(response: LLMResponse): LatencyBudgetResult? =
