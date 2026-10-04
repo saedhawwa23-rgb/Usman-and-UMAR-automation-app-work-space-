@@ -49,7 +49,10 @@ fun Needle3Screen(viewModel: Needle3ViewModel = hiltViewModel()) {
                         Text("The official Needle 3 model will be downloaded once into private app storage and verified by SHA-256.", color = AppTheme.colors.textSecondary)
                         Button(onClick = viewModel::install) { Text("INSTALL LOCALLY") }
                     }
-                    Needle3Status.Loading -> Text("Loading the verified model and structured tool schemas…", color = AppTheme.colors.textSecondary)
+                    Needle3Status.Loading -> Text("Preparing Needle 3 installation…", color = AppTheme.colors.textSecondary)
+                    Needle3Status.Downloading -> Text("Downloading official Needle 3 model (35.3 MB)…", color = AppTheme.colors.textSecondary)
+                    Needle3Status.Verifying -> Text("Verifying model size and SHA-256…", color = AppTheme.colors.textSecondary)
+                    Needle3Status.Initializing -> Text("Initializing ARM native runtime and tool schema…", color = AppTheme.colors.textSecondary)
                     Needle3Status.Ready -> {
                         Text("Model loaded and ready for local action selection.", color = AppTheme.colors.textSecondary)
                         Button(onClick = viewModel::runDiagnostic) { Text("RUN LOCAL TOOL DIAGNOSTIC") }
@@ -77,6 +80,9 @@ fun Needle3Screen(viewModel: Needle3ViewModel = hiltViewModel()) {
 private fun Needle3Status.label(): String = when (this) {
     Needle3Status.NotInstalled -> "Not Installed"
     Needle3Status.Loading -> "Loading"
+    Needle3Status.Downloading -> "Downloading"
+    Needle3Status.Verifying -> "Verifying"
+    Needle3Status.Initializing -> "Initializing"
     Needle3Status.Ready -> "Ready"
     is Needle3Status.Error -> "Error"
     is Needle3Status.Unsupported -> "Unsupported"

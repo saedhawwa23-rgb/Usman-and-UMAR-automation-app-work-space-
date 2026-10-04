@@ -48,6 +48,15 @@ class RedactedDetail private constructor(
                 vendorType = detail.vendorType,
                 vendorCode = detail.vendorCode
             )
+
+        internal fun fromLocalRuntime(message: String): RedactedDetail =
+            RedactedDetail(
+                vendorType = "local_runtime",
+                vendorCode = message
+                    .replace(Regex("[^A-Za-z0-9_:. -]"), "")
+                    .take(160)
+                    .ifBlank { "runtime_failure" }
+            )
     }
 }
 
@@ -204,7 +213,8 @@ object LLMErrorMapper {
             error = error,
             provider = provider,
             model = model,
-            retryable = error == LLMError.Network && isConnectFailure
+            retryable = error == LLMError.Network && isConnectFailure,
+            detail = if (isNeedle3NotReady) RedactedDetail.fromLocalRuntime(safeMessage) else null
         )
     }
 

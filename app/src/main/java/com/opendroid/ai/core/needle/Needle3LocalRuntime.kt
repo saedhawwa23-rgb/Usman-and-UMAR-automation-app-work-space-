@@ -22,6 +22,9 @@ import javax.inject.Singleton
 sealed class Needle3Status {
     data object NotInstalled : Needle3Status()
     data object Loading : Needle3Status()
+    data object Downloading : Needle3Status()
+    data object Verifying : Needle3Status()
+    data object Initializing : Needle3Status()
     data object Ready : Needle3Status()
     data class Error(val message: String) : Needle3Status()
     data class Unsupported(val message: String) : Needle3Status()
@@ -37,17 +40,28 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
 
     suspend fun installAndLoad(): Needle3Status = withContext(Dispatchers.IO) {
         mutex.withLock {
+            var stage = "MODEL_DOWNLOAD_FAILED"
             try {
                 state.value = Needle3Status.Loading
+                stage = "NATIVE_RUNTIME_FAILED"
                 ensureNativeSupported()
                 val model = modelFile()
                 if (!model.exists() || model.length() != MODEL_SIZE || sha256(model) != MODEL_SHA256) {
+                    stage = "MODEL_DOWNLOAD_FAILED"
+                    state.value = Needle3Status.Downloading
                     downloadModel(model)
                 }
+                stage = "MODEL_CHECKSUM_FAILED"
+                state.value = Needle3Status.Verifying
+                verifyModel(model)
+                stage = "MODEL_INITIALIZATION_FAILED"
+                state.value = Needle3Status.Initializing
                 loadForCurrentTools(model)
                 state.value = Needle3Status.Ready
             } catch (t: Throwable) {
-                state.value = Needle3Status.Error(t.message ?: "Needle 3 could not be loaded")
+                state.value = Needle3Status.Error(
+                    "$stage: ${t.message ?: "Needle 3 could not be loaded"}"
+                )
             }
             state.value
         }
@@ -141,14 +155,20 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
             connection.connect()
             if (connection.responseCode !in 200..299) throw IllegalStateException("Needle 3 download failed: HTTP ${connection.responseCode}")
             connection.inputStream.use { input -> partial.outputStream().use { output -> input.copyTo(output) } }
-            if (partial.length() != MODEL_SIZE || sha256(partial) != MODEL_SHA256) {
-                throw IllegalStateException("Needle 3 model integrity check failed")
-            }
             if (!partial.renameTo(destination)) throw IllegalStateException("Could not install Needle 3 model")
         } finally {
             connection.disconnect()
             if (partial.exists() && !destination.exists()) partial.delete()
         }
+    }
+
+    private fun verifyModel(model: File) {
+        if (!model.isFile || model.length() != MODEL_SIZE) {
+            throw IllegalStateException("expected $MODEL_SIZE bytes, found ${model.length()}")
+        }
+        val actual = sha256(model)
+        if (actual != MODEL_SHA256) throw IllegalStateException("SHA-256 mismatch: $actual")
+        if (!model.canRead()) throw IllegalStateException("model file is not readable")
     }
 
     private fun sha256(file: File): String = file.inputStream().use { input ->

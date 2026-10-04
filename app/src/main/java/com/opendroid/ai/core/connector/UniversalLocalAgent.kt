@@ -91,6 +91,14 @@ class UniversalLocalAgent @Inject constructor(
                     events = events + UniversalAgentEvent("error", "Needle 3 is not ready: model is still loading")
                 )
             }
+            Needle3Status.Downloading,
+            Needle3Status.Verifying,
+            Needle3Status.Initializing -> {
+                return UniversalAgentResult(
+                    completed = false,
+                    events = events + UniversalAgentEvent("error", "Needle 3 is not ready: model installation is still in progress")
+                )
+            }
         }
         events.removeLastOrNull()
         events += UniversalAgentEvent("engine", "Needle 3 (Local) is ready")

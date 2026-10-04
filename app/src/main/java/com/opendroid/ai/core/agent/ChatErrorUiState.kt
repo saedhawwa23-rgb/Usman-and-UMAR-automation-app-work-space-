@@ -96,7 +96,10 @@ fun ChatErrorUiState.title(): String = when (category) {
 }
 
 fun ChatErrorUiState.guidance(): String = when (category) {
-    LLMError.Needle3NotReady -> "Install the Needle 3 model locally and wait until its status is Ready. No cloud API key is required."
+    LLMError.Needle3NotReady -> buildString {
+        append("Install the Needle 3 model locally and wait until its status is Ready. No cloud API key is required.")
+        redactedDetail?.toString()?.takeIf { it.isNotBlank() }?.let { append(" Technical detail: $it") }
+    }
     LLMError.AuthMissing -> "Add an API key in Settings."
     LLMError.AuthInvalid -> "Check or replace the key in Settings."
     LLMError.QuotaExhausted -> "Add credits with $provider, or choose another provider."

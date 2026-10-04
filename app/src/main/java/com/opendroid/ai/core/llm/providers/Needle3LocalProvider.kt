@@ -50,7 +50,11 @@ class Needle3LocalProvider @Inject constructor(
             is Needle3Status.Error -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
             is Needle3Status.Unsupported -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
             Needle3Status.NotInstalled -> throw IllegalStateException("Needle 3 is not ready: model installation did not complete")
-            Needle3Status.Loading -> throw IllegalStateException("Needle 3 is not ready: model is still loading")
+            Needle3Status.Loading,
+            Needle3Status.Downloading,
+            Needle3Status.Verifying,
+            Needle3Status.Initializing ->
+                throw IllegalStateException("Needle 3 is not ready: model installation is still in progress")
         }
     }
 
