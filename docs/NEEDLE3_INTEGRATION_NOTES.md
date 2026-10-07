@@ -26,5 +26,5 @@
 
 - Preserve package/application ID `com.usmanandumar.app`, app name, existing providers, action dispatcher, approval policy, and Termux allowlist.
 - Do not add Gemini, another model, or a cloud inference path for Needle 3.
-- Ship or download the `.cact` model with integrity verification before native loading.
+- Ship the pinned `.cact` model and its Apache-2.0 license as APK assets; copy it into private app storage with visible progress and verify exact size and SHA-256 before native loading. Needle setup must not depend on a runtime model download.
 - Serialize native calls because the upstream runtime is process-global and non-thread-safe.

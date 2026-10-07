@@ -1,6 +1,7 @@
 package com.opendroid.ai.core.needle
 
 import android.content.Context
+import android.util.Log
 import com.opendroid.ai.core.agent.ActionSchema
 import com.opendroid.ai.core.agent.ParamType
 import kotlinx.coroutines.Dispatchers
@@ -11,8 +12,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.MessageDigest
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,7 +21,7 @@ import javax.inject.Singleton
 sealed class Needle3Status {
     data object NotInstalled : Needle3Status()
     data object Loading : Needle3Status()
-    data object Downloading : Needle3Status()
+    data class Downloading(val bytesCopied: Long) : Needle3Status()
     data object Verifying : Needle3Status()
     data object Initializing : Needle3Status()
     data object Ready : Needle3Status()
@@ -40,27 +39,30 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
 
     suspend fun installAndLoad(): Needle3Status = withContext(Dispatchers.IO) {
         mutex.withLock {
-            var stage = "MODEL_DOWNLOAD_FAILED"
-            try {
-                state.value = Needle3Status.Loading
-                stage = "NATIVE_RUNTIME_FAILED"
-                ensureNativeSupported()
-                val model = modelFile()
-                if (!model.exists() || model.length() != MODEL_SIZE || sha256(model) != MODEL_SHA256) {
-                    stage = "MODEL_DOWNLOAD_FAILED"
-                    state.value = Needle3Status.Downloading
-                    downloadModel(model)
-                }
-                stage = "MODEL_CHECKSUM_FAILED"
-                state.value = Needle3Status.Verifying
-                verifyModel(model)
-                stage = "MODEL_INITIALIZATION_FAILED"
-                state.value = Needle3Status.Initializing
-                loadForCurrentTools(model)
-                state.value = Needle3Status.Ready
-            } catch (t: Throwable) {
-                state.value = Needle3Status.Error(
-                    "$stage: ${t.message ?: "Needle 3 could not be loaded"}"
+                var stage = "MODEL_INSTALL_FAILED"
+                try {
+                    state.value = Needle3Status.Loading
+                    val model = modelFile()
+                    if (!model.exists() || model.length() != MODEL_SIZE || sha256(model) != MODEL_SHA256) {
+                        stage = "MODEL_INSTALL_FAILED"
+                        state.value = Needle3Status.Downloading(0L)
+                        installBundledModel(model)
+                    }
+                    stage = "MODEL_CHECKSUM_FAILED"
+                    state.value = Needle3Status.Verifying
+                    verifyModel(model)
+                    stage = "NATIVE_RUNTIME_FAILED"
+                    ensureNativeSupported()
+                    stage = "MODEL_INITIALIZATION_FAILED"
+                    state.value = Needle3Status.Initializing
+                    loadForCurrentTools(model)
+                    state.value = Needle3Status.Ready
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (t: Throwable) {
+                    Log.e(TAG, "$stage: Needle 3 local install/load failed", t)
+                    state.value = Needle3Status.Error(
+                        "$stage: ${t.message ?: "Needle 3 could not be loaded"}"
                 )
             }
             state.value
@@ -106,6 +108,13 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
 
     fun modelFile(): File = File(context.filesDir, "needle3/needle3.cact")
 
+    fun hasBundledModelAsset(): Boolean = try {
+        context.assets.open(BUNDLED_MODEL_ASSET).use { }
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     private fun initialStatus(): Needle3Status = try {
         ensureNativeSupported()
         val file = modelFile()
@@ -143,22 +152,38 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
         initializedToolsHash = hash
     }
 
-    private fun downloadModel(destination: File) {
+    private fun installBundledModel(destination: File) {
         destination.parentFile?.mkdirs()
-        val partial = File(destination.parentFile, "needle3.cact.part")
-        val connection = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 30_000
-            readTimeout = 120_000
-            instanceFollowRedirects = true
-        }
+        val partial = File(destination.parentFile, "needle3.cact.installing")
+        if (partial.exists()) partial.delete()
         try {
-            connection.connect()
-            if (connection.responseCode !in 200..299) throw IllegalStateException("Needle 3 download failed: HTTP ${connection.responseCode}")
-            connection.inputStream.use { input -> partial.outputStream().use { output -> input.copyTo(output) } }
+            context.assets.open(BUNDLED_MODEL_ASSET).buffered().use { input ->
+                partial.outputStream().buffered().use { output ->
+                    val buffer = ByteArray(COPY_BUFFER_BYTES)
+                    var copied = 0L
+                    var lastReported = 0L
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                        copied += count
+                        if (copied - lastReported >= PROGRESS_INTERVAL_BYTES || copied == MODEL_SIZE) {
+                            state.value = Needle3Status.Downloading(copied)
+                            lastReported = copied
+                        }
+                    }
+                    output.flush()
+                }
+            }
+            if (partial.length() != MODEL_SIZE || sha256(partial) != MODEL_SHA256) {
+                throw IllegalStateException("Bundled Needle 3 model failed its size/SHA-256 check")
+            }
+            if (destination.exists() && !destination.delete()) {
+                throw IllegalStateException("Could not replace the existing Needle 3 model")
+            }
             if (!partial.renameTo(destination)) throw IllegalStateException("Could not install Needle 3 model")
         } finally {
-            connection.disconnect()
-            if (partial.exists() && !destination.exists()) partial.delete()
+            if (partial.exists()) partial.delete()
         }
     }
 
@@ -186,9 +211,12 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
     companion object {
+        private const val TAG = "Needle3Runtime"
+        private const val BUNDLED_MODEL_ASSET = "needle3/needle3.cact"
+        private const val COPY_BUFFER_BYTES = 64 * 1024
+        private const val PROGRESS_INTERVAL_BYTES = 512 * 1024L
         const val MODEL_SIZE = 35_335_380L
         const val MODEL_SHA256 = "c9d915eca282ed42d1a09b143b592adb4cc6744ffe2d294adf5cfc5548170c38"
-        const val MODEL_URL = "https://huggingface.co/Cactus-Compute/needle3/resolve/main/needle3.cact"
     }
 }
 

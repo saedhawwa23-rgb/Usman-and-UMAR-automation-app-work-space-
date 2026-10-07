@@ -8,6 +8,7 @@ import com.opendroid.ai.core.needle.Needle3LocalRuntime
 import com.opendroid.ai.core.needle.Needle3Status
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,9 +25,19 @@ class Needle3ViewModel @Inject constructor(
     val status: StateFlow<Needle3Status> = runtime.status
     private val _diagnostic = MutableStateFlow<String?>(null)
     val diagnostic: StateFlow<String?> = _diagnostic.asStateFlow()
+    private var installationJob: Job? = null
+
+    init {
+        // The asset ships inside this APK. Stage and initialize it automatically on first
+        // opening this screen so setup never depends on a slow or unavailable model download.
+        if (runtime.hasBundledModelAsset() && runtime.status.value !is Needle3Status.Ready) {
+            install()
+        }
+    }
 
     fun install() {
-        viewModelScope.launch { runtime.installAndLoad() }
+        if (installationJob?.isActive == true) return
+        installationJob = viewModelScope.launch { runtime.installAndLoad() }
     }
 
     fun runDiagnostic() {

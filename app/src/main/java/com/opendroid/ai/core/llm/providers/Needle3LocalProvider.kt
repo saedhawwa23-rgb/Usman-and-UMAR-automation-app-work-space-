@@ -39,7 +39,7 @@ class Needle3LocalProvider @Inject constructor(
     override val name: String = ProviderCatalog.NEEDLE3_LOCAL
     override val availableModels: List<String> = listOf("needle3")
 
-    /** Downloads the official .cact file when needed, verifies it, then initializes native Needle 3. */
+    /** Stages the bundled .cact file when needed, verifies it, then initializes native Needle 3. */
     suspend fun ensureReady(): Needle3Status =
         if (runtime.status.value is Needle3Status.Ready) runtime.status.value
         else runtime.installAndLoad()
@@ -51,7 +51,7 @@ class Needle3LocalProvider @Inject constructor(
             is Needle3Status.Unsupported -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
             Needle3Status.NotInstalled -> throw IllegalStateException("Needle 3 is not ready: model installation did not complete")
             Needle3Status.Loading,
-            Needle3Status.Downloading,
+            is Needle3Status.Downloading,
             Needle3Status.Verifying,
             Needle3Status.Initializing ->
                 throw IllegalStateException("Needle 3 is not ready: model installation is still in progress")
