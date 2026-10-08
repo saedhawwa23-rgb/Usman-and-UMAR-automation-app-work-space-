@@ -39,7 +39,11 @@ object Needle3ResponseParser {
 
     /** Return display-safe text; a chat response can never leak raw call JSON. */
     fun toNaturalText(raw: String, userQuery: String): String {
-        val root = parseObject(raw) ?: return raw.trim()
+        val root = parseObject(raw) ?: return if (looksLikeStructuredOutput(raw)) {
+            greetingReply(userQuery) ?: "I couldn't format that local response. Please try again."
+        } else {
+            raw.trim()
+        }
         val type = stringValue(root["type"]).orEmpty().lowercase()
         val calls = parseCalls(raw)
         val isCallEnvelope = type == "call" || calls.isNotEmpty()
@@ -50,17 +54,11 @@ object Needle3ResponseParser {
                 .mapNotNull { key -> extractDisplayText(root[key]) }
                 .firstOrNull(String::isNotBlank)
             if (success == true && !summary.isNullOrBlank()) return summary
-            if (isGreeting(userQuery)) {
-                return "Hi! What can I help you with?"
-            }
+            greetingReply(userQuery)?.let { return it }
             if (success == false || !stringValue(root["error"]).isNullOrBlank()) {
                 return "I couldn't complete that action. Please try again."
             }
-            return if (isGreeting(userQuery)) {
-                "Hi! What can I help you with?"
-            } else {
-                "I can help with that. Please tell me what you'd like me to do."
-            }
+            return "I can help with that. Please tell me what you'd like me to do."
         }
 
         val text = textKeys.asSequence()
@@ -71,6 +69,10 @@ object Needle3ResponseParser {
         // Do not render unrecognized structured output as raw JSON in the chat UI.
         return "I couldn't format that local response. Please try again."
     }
+
+    /** A no-inference response for greetings that should not trigger action planning. */
+    fun greetingReply(userQuery: String): String? =
+        if (isGreeting(userQuery)) "Hi! What can I help you with?" else null
 
     private fun parseCallElement(element: JsonElement, allowedNames: Set<String>?): Needle3ParsedCall? {
         val source = element as? JsonObject ?: return null
@@ -107,11 +109,20 @@ object Needle3ResponseParser {
     }
 
     private fun parseObject(raw: String): JsonObject? {
-        val stripped = raw.trim()
-            .removePrefix("```json").removePrefix("```JSON").removePrefix("```")
-            .removeSuffix("```").trim()
+        val stripped = stripFence(raw)
         return runCatching { json.parseToJsonElement(stripped).jsonObject }.getOrNull()
     }
+
+    private fun looksLikeStructuredOutput(raw: String): Boolean {
+        val candidate = stripFence(raw)
+        if (!candidate.startsWith("{")) return false
+        return Regex("\\\"(?:type|function_calls|tool_calls|calls|success|error)\\\"\\s*:")
+            .containsMatchIn(candidate)
+    }
+
+    private fun stripFence(raw: String): String = raw.trim()
+        .removePrefix("```json").removePrefix("```JSON").removePrefix("```")
+        .removeSuffix("```").trim()
 
     private fun extractDisplayText(element: JsonElement?): String? = when (element) {
         is JsonPrimitive -> element.contentOrNull?.takeIf { it.isNotBlank() }

@@ -60,8 +60,20 @@ class Needle3LocalProvider @Inject constructor(
     }
 
     override suspend fun complete(request: LLMRequest): LLMResponse = withContext(Dispatchers.IO) {
-        requireReady()
         val started = System.currentTimeMillis()
+        val userQuery = request.messages.lastOrNull { it.sender == ChatMessage.Sender.USER }?.text.orEmpty()
+        if (request.responseFormat == ResponseFormat.TEXT) {
+            Needle3ResponseParser.greetingReply(userQuery)?.let { greeting ->
+                return@withContext LLMResponse(
+                    content = greeting,
+                    tokensUsed = 0,
+                    model = "needle3",
+                    provider = name,
+                    latencyMs = System.currentTimeMillis() - started
+                )
+            }
+        }
+        requireReady()
         val input = buildInput(request)
         val minimumOutput = if (request.responseFormat == ResponseFormat.JSON) 768 else 640
         val outputLimit = maxOf(request.maxTokens, minimumOutput).coerceAtMost(768)
@@ -69,7 +81,7 @@ class Needle3LocalProvider @Inject constructor(
         val content = if (request.responseFormat == ResponseFormat.TEXT) {
             Needle3ResponseParser.toNaturalText(
                 nativeResponse,
-                request.messages.lastOrNull { it.sender == ChatMessage.Sender.USER }?.text.orEmpty()
+                userQuery
             )
         } else {
             adaptToExistingPlan(nativeResponse, input)

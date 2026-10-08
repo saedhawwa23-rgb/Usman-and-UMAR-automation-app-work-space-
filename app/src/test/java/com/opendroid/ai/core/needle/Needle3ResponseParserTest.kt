@@ -65,6 +65,26 @@ class Needle3ResponseParserTest {
     }
 
     @Test
+    fun `truncated call envelope from the screenshot becomes a greeting`() {
+        val raw = "{\"type\":\"call\",\"success\""
+        assertEquals("Hi! What can I help you with?", Needle3ResponseParser.toNaturalText(raw, "hi"))
+    }
+
+    @Test
+    fun `truncated structured output for other requests is not rendered raw`() {
+        val raw = "{\"type\":\"call\",\"success\""
+        val output = Needle3ResponseParser.toNaturalText(raw, "summarize the document")
+        assertEquals("I couldn't format that local response. Please try again.", output)
+        assertFalse(output.contains("{\"type\""))
+    }
+
+    @Test
+    fun `simple greeting detection does not swallow longer requests`() {
+        assertEquals("Hi! What can I help you with?", Needle3ResponseParser.greetingReply("hi!"))
+        assertEquals(null, Needle3ResponseParser.greetingReply("hi, set a timer"))
+    }
+
+    @Test
     fun `successful call result renders its human-readable summary`() {
         val raw = """{"type":"call","success":true,"result":{"message":"Timer set for one minute."}}"""
         assertEquals("Timer set for one minute.", Needle3ResponseParser.toNaturalText(raw, "set a timer"))
