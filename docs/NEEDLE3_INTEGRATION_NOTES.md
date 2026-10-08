@@ -28,3 +28,4 @@
 - Do not add Gemini, another model, or a cloud inference path for Needle 3.
 - Ship the pinned `.cact` model and its Apache-2.0 license as APK assets; copy it into private app storage with visible progress and verify exact size and SHA-256 before native loading. Needle setup must not depend on a runtime model download.
 - Serialize native calls because the upstream runtime is process-global and non-thread-safe.
+- `libneedlebridge.so` links against `libc++_shared.so`; bundle the NDK-matched shared C++ runtime under `app/src/main/jniLibs/armeabi-v7a/` and `app/src/main/jniLibs/arm64-v8a/`. Verify each packaged ELF ABI and all `DT_NEEDED` dependencies in release artifacts. A successful static/package audit is not a substitute for loading the library on a physical device of the target ABI.
