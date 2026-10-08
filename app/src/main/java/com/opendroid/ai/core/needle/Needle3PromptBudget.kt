@@ -23,7 +23,7 @@ object Needle3PromptBudget {
     const val MAX_STATIC_INPUT_BYTES = 3_000
     const val RESERVED_TEMPLATE_TOKENS = 1_000
     const val MAX_COMPLETION_INPUT_BYTES = 2_500
-    const val MAX_NEW_TOKENS = 512
+    const val MAX_NEW_TOKENS = 768
 
     private const val SYSTEM_PROMPT_BYTES = 512
     private const val TOOLS_JSON_OVERHEAD_BYTES = 2

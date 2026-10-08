@@ -4,8 +4,10 @@ import com.opendroid.ai.core.llm.LLMProvider
 import com.opendroid.ai.core.llm.LLMRequest
 import com.opendroid.ai.core.llm.LLMResponse
 import com.opendroid.ai.core.llm.ProviderCatalog
+import com.opendroid.ai.core.llm.ResponseFormat
 import com.opendroid.ai.core.llm.StreamChunk
 import com.opendroid.ai.core.needle.Needle3LocalRuntime
+import com.opendroid.ai.core.needle.Needle3ResponseParser
 import com.opendroid.ai.core.needle.Needle3Status
 import com.opendroid.ai.data.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -62,9 +63,19 @@ class Needle3LocalProvider @Inject constructor(
         requireReady()
         val started = System.currentTimeMillis()
         val input = buildInput(request)
-        val nativeResponse = runtime.complete(input, request.maxTokens.coerceIn(64, 1024))
+        val minimumOutput = if (request.responseFormat == ResponseFormat.JSON) 768 else 640
+        val outputLimit = maxOf(request.maxTokens, minimumOutput).coerceAtMost(768)
+        val nativeResponse = runtime.complete(input, outputLimit)
+        val content = if (request.responseFormat == ResponseFormat.TEXT) {
+            Needle3ResponseParser.toNaturalText(
+                nativeResponse,
+                request.messages.lastOrNull { it.sender == ChatMessage.Sender.USER }?.text.orEmpty()
+            )
+        } else {
+            adaptToExistingPlan(nativeResponse, input)
+        }
         LLMResponse(
-            content = adaptToExistingPlan(nativeResponse, input),
+            content = content,
             tokensUsed = nativeResponse.length / 4,
             model = "needle3",
             provider = name,
@@ -89,17 +100,29 @@ class Needle3LocalProvider @Inject constructor(
                     .put("parameters", JSONObject(tool.parameters)))
             }
         }.toString()
-        val response = runtime.completeWithTools(messages.joinToString("\n") { it.text }, schema, 512)
-        emit(StreamChunk.Content(response))
-        parseCalls(response).forEach { call ->
-            emit(StreamChunk.ToolCall(call.first, call.second))
+        val input = buildString {
+            append(PLAN_PROMPT)
+            append('\n')
+            append(messages.joinToString("\n") { it.text })
+        }
+        val response = runtime.completeWithTools(input, schema, 768)
+        val calls = Needle3ResponseParser.parseCalls(response, tools.map { it.name }.toSet())
+        if (calls.isEmpty()) {
+            emit(StreamChunk.Content(Needle3ResponseParser.toNaturalText(
+                response,
+                messages.lastOrNull { it.sender == ChatMessage.Sender.USER }?.text.orEmpty()
+            )))
+        } else {
+            calls.forEach { call ->
+                emit(StreamChunk.ToolCall(call.name, call.argumentsJson))
+            }
         }
     }
 
     override suspend fun isAvailable(): Boolean = runtime.status.value is com.opendroid.ai.core.needle.Needle3Status.Ready
 
     private fun buildInput(request: LLMRequest): String = buildString {
-        append(NEEDLE_RESPONSE_PROMPT)
+        append(if (request.responseFormat == ResponseFormat.TEXT) CHAT_PROMPT else PLAN_PROMPT)
         append("\n\n")
         request.messages.takeLast(8).forEach { message ->
             append(if (message.sender == ChatMessage.Sender.USER) "User: " else "Assistant: ")
@@ -109,11 +132,12 @@ class Needle3LocalProvider @Inject constructor(
     }
 
     private companion object {
-        const val NEEDLE_RESPONSE_PROMPT = "You are USMAN AND UMAR, a concise on-device Android assistant. Answer ordinary questions naturally. For device actions, return only a valid structured plan using supported action names and arguments; let the app's existing approval and safety checks govern execution. Ask when required information is missing. Never claim an action has completed."
+        const val CHAT_PROMPT = "You are USMAN AND UMAR, a friendly local Android assistant. For greetings and ordinary questions, answer directly in natural language only. Never output JSON, a tool call, or a plan in chat mode. Do not claim device actions were performed."
+        const val PLAN_PROMPT = "For an explicit device-action request, return only a JSON object with a function_calls array. Each call must use a registered action name and valid arguments. Never call tools for greetings or ordinary questions. The app performs validation, approval, and execution; do not claim an action has completed."
     }
 
     private fun adaptToExistingPlan(raw: String, goal: String): String {
-        val calls = parseCalls(raw)
+        val calls = Needle3ResponseParser.parseCalls(raw)
         if (calls.isEmpty()) return raw
         return buildJsonObject {
             put("planId", "needle3-${System.currentTimeMillis()}")
@@ -122,12 +146,12 @@ class Needle3LocalProvider @Inject constructor(
             put("estimatedSteps", calls.size)
             putJsonArray("steps") {
                 calls.forEachIndexed { index, call ->
-                    val args = Json.parseToJsonElement(call.second).jsonObject
+                    val args = Json.parseToJsonElement(call.argumentsJson).jsonObject
                     add(buildJsonObject {
                         put("stepId", "needle3-${index + 1}")
                         put("order", index + 1)
-                        put("description", "Needle 3 selected ${call.first}")
-                        put("action", call.first)
+                        put("description", "Needle 3 selected ${call.name}")
+                        put("action", call.name)
                         putJsonObject("params") {
                             args.entries.forEach { (key, value) ->
                                 put(key, when (value) {
@@ -140,24 +164,5 @@ class Needle3LocalProvider @Inject constructor(
                 }
             }
         }.toString()
-    }
-
-    private fun parseCalls(raw: String): List<Pair<String, String>> = runCatching {
-        val root = Json.parseToJsonElement(raw).jsonObject
-        val calls = root["function_calls"]?.jsonArray ?: return emptyList()
-        calls.mapNotNull { element ->
-            val obj = element.jsonObject
-            val name = obj["name"]?.jsonPrimitive?.content?.takeIf(String::isNotBlank) ?: return@mapNotNull null
-            val arguments = obj["arguments"]?.let { if (it is JsonObject) it.toString() else it.jsonPrimitive.content }
-                ?: "{}"
-            name to arguments
-        }
-    }.getOrDefault(emptyList())
-
-    private fun JsonObject.toStringMap(): Map<String, String> = entries.associate { (key, value) ->
-        key to when (value) {
-            is JsonPrimitive -> value.content
-            else -> value.toString()
-        }
     }
 }

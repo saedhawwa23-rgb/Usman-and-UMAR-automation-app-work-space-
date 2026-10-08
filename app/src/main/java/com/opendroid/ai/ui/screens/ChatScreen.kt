@@ -52,6 +52,7 @@ import com.opendroid.ai.core.agent.ChatErrorUiState
 import com.opendroid.ai.core.agent.guidance
 import com.opendroid.ai.core.agent.primaryAction
 import com.opendroid.ai.core.agent.title
+import com.opendroid.ai.core.llm.ProviderCatalog
 import com.opendroid.ai.core.voice.SpeechRecognitionEngine
 import com.opendroid.ai.data.models.AutoMode
 import com.opendroid.ai.data.models.ChatMessage
@@ -88,6 +89,7 @@ fun ChatScreen(
     val runningSessionId by viewModel.runningSessionId.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val llmConfig by viewModel.llmConfig.collectAsState()
+    val usingNeedle3 = ProviderCatalog.canonicalName(llmConfig.activeProvider) == ProviderCatalog.NEEDLE3_LOCAL
     val currentSessionId = sessions.firstOrNull { it.isCurrent }?.id
     val runningElsewhere = runningSessionId != null && runningSessionId != currentSessionId
 
@@ -205,7 +207,7 @@ fun ChatScreen(
                             fontSize = 20.sp,
                             letterSpacing = 2.sp
                         )
-                        AgentStatusSubtitle(visibleAgentState, runningElsewhere)
+                        AgentStatusSubtitle(visibleAgentState, runningElsewhere, usingNeedle3)
                     }
                 },
                 actions = {
@@ -382,7 +384,7 @@ fun ChatScreen(
                     // visibleAgentState.
                     if (visibleAgentState is AgentState.Thinking) {
                         item {
-                            ThinkingBubble()
+                            ThinkingBubble(if (usingNeedle3) "Needle 3 is thinking..." else "Thinking...")
                         }
                     }
 
@@ -677,7 +679,11 @@ fun ChatScreen(
 }
 
 @Composable
-fun AgentStatusSubtitle(state: AgentState, runningElsewhere: Boolean = false) {
+fun AgentStatusSubtitle(
+    state: AgentState,
+    runningElsewhere: Boolean = false,
+    needle3Active: Boolean = false
+) {
     // runningElsewhere means [state] has already been forced to Idle because the real
     // activity belongs to a different chat (see ChatViewModel.visibleAgentState) - say
     // so explicitly instead of showing a plain "Online & Ready" that would hide the
@@ -688,7 +694,7 @@ fun AgentStatusSubtitle(state: AgentState, runningElsewhere: Boolean = false) {
         when (state) {
             is AgentState.Idle -> "Online & Ready"
             is AgentState.Listening -> "Listening to voice input..."
-            is AgentState.Thinking -> "Analyzing intent & planning..."
+            is AgentState.Thinking -> if (needle3Active) "Needle 3 is thinking..." else "Analyzing intent & planning..."
             is AgentState.PlanProposed -> "Requires Plan Approval"
             is AgentState.ExecutingPlan -> "Executing: ${state.currentStepDesc}"
             is AgentState.Speaking -> "Speaking: ${state.text.take(30)}..."
@@ -855,7 +861,7 @@ fun ChatBubble(
 }
 
 @Composable
-fun ThinkingBubble() {
+fun ThinkingBubble(label: String = "Thinking...") {
     val transition = rememberInfiniteTransition(label = "thinking")
     val dot1 by transition.animateFloat(
         initialValue = 0.25f,
@@ -893,6 +899,8 @@ fun ThinkingBubble() {
                 Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(TextPrimary.copy(alpha = dot1)))
                 Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(TextPrimary.copy(alpha = dot2)))
                 Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(TextPrimary.copy(alpha = dot3)))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = label, fontSize = 12.sp, color = TextSecondary)
             }
         }
     }
