@@ -23,7 +23,9 @@ object Needle3PromptBudget {
     const val MAX_STATIC_INPUT_BYTES = 3_000
     const val RESERVED_TEMPLATE_TOKENS = 1_000
     const val MAX_COMPLETION_INPUT_BYTES = 2_500
-    const val MAX_NEW_TOKENS = 768
+    const val MAX_CHAT_TOKENS = 512
+    const val MAX_TOOL_CALL_TOKENS = 1_536
+    const val MAX_NEW_TOKENS = MAX_TOOL_CALL_TOKENS
 
     private const val SYSTEM_PROMPT_BYTES = 512
     private const val TOOLS_JSON_OVERHEAD_BYTES = 2
@@ -82,7 +84,7 @@ object Needle3PromptBudget {
         val name = source["name"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
         if (name.isEmpty()) return null
 
-        val description = source["description"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+        val description = conciseToolDescription(name)
         val originalParameters = source["parameters"] as? JsonObject
         val originalProperties = originalParameters?.get("properties") as? JsonObject
         val properties = buildJsonObject {
@@ -108,7 +110,16 @@ object Needle3PromptBudget {
         return buildJsonObject {
             put("name", JsonPrimitive(name))
             if (description.isNotEmpty()) put("description", JsonPrimitive(description.take(64)))
-            put("parameters", parameters)
+            if (properties.isNotEmpty()) put("parameters", parameters)
+        }
+    }
+
+    private fun conciseToolDescription(name: String): String {
+        val shortName = name.substringAfterLast("__").substringAfterLast('.').lowercase()
+        return when (shortName) {
+            "list_available_tools" -> "List tools"
+            "list_connectors" -> "List connectors"
+            else -> shortName.replace('_', ' ')
         }
     }
 

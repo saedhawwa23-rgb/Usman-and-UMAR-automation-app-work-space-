@@ -18,24 +18,39 @@ object Needle3ResponseParser {
     private val textKeys = listOf("summary", "text", "content", "message", "answer", "response", "output", "result", "data")
     private val argumentKeys = listOf("arguments", "params", "args", "input")
     private val nameKeys = listOf("name", "action", "tool_name", "function_name", "tool")
+    private val malformedToolName = Regex("\\\"tool\\\"\\s*:\\s*\\\"([A-Za-z_][A-Za-z0-9_]*)\\\"")
 
     /**
      * Parse native `type: call`, OpenAI-style function_calls/tool_calls, and nested
      * function envelopes. Action plans accept only registered app actions; callers
      * supplying connector tools pass their explicit allowed-name set instead.
      */
-    fun parseCalls(raw: String, allowedNames: Set<String>? = null): List<Needle3ParsedCall> = runCatching {
-        val root = parseObject(raw) ?: return emptyList()
-        val list = (root["function_calls"] as? JsonArray)
-            ?: (root["tool_calls"] as? JsonArray)
-            ?: (root["calls"] as? JsonArray)
-        val calls = if (list != null) {
-            list.mapNotNull { parseCallElement(it, allowedNames) }
-        } else {
-            listOfNotNull(parseCallElement(root, allowedNames))
-        }
-        calls
-    }.getOrDefault(emptyList())
+    fun parseCalls(raw: String, allowedNames: Set<String>? = null): List<Needle3ParsedCall> {
+        val parsed = runCatching {
+            val root = parseObject(raw) ?: return@runCatching emptyList()
+            val list = (root["function_calls"] as? JsonArray)
+                ?: (root["tool_calls"] as? JsonArray)
+                ?: (root["calls"] as? JsonArray)
+            if (list != null) list.mapNotNull { parseCallElement(it, allowedNames) }
+            else listOfNotNull(parseCallElement(root, allowedNames))
+        }.getOrDefault(emptyList())
+        if (parsed.isNotEmpty() || parseObject(raw) != null) return parsed
+
+        // Recover only a truncated call envelope, never an incidental tool mention in text.
+        val candidateText = stripFence(raw)
+        if (!candidateText.startsWith("{") ||
+            !Regex("\\\"type\\\"\\s*:\\s*\\\"call\\\"").containsMatchIn(candidateText)
+        ) return emptyList()
+        val candidate = malformedToolName.find(candidateText)?.groupValues?.getOrNull(1)
+            ?: return emptyList()
+        val allowed = allowedNames?.contains(candidate) ?: ActionSchema.isValid(candidate)
+        return if (allowed) listOf(Needle3ParsedCall(candidate, "{}")) else emptyList()
+    }
+
+    /** Friendly output for an unparseable tool envelope; normal text stays readable. */
+    fun toolCallFailureOrNaturalText(raw: String, userQuery: String): String =
+        if (looksLikeToolCallOutput(raw)) "Tool parsing failed. Try a simpler command like 'list tools'."
+        else toNaturalText(raw, userQuery)
 
     /** Return display-safe text; a chat response can never leak raw call JSON. */
     fun toNaturalText(raw: String, userQuery: String): String {
@@ -118,6 +133,15 @@ object Needle3ResponseParser {
         if (!candidate.startsWith("{")) return false
         return Regex("\\\"(?:type|function_calls|tool_calls|calls|success|error)\\\"\\s*:")
             .containsMatchIn(candidate)
+    }
+
+    private fun looksLikeToolCallOutput(raw: String): Boolean {
+        val candidate = stripFence(raw)
+        val root = parseObject(candidate)
+        val type = stringValue(root?.get("type")).orEmpty().lowercase()
+        return type == "call" || root?.let {
+            it.containsKey("function_calls") || it.containsKey("tool_calls") || it.containsKey("calls")
+        } == true || Regex("\\\"type\\\"\\s*:\\s*\\\"call\\\"|\\\"tool\\\"\\s*:").containsMatchIn(candidate)
     }
 
     private fun stripFence(raw: String): String = raw.trim()

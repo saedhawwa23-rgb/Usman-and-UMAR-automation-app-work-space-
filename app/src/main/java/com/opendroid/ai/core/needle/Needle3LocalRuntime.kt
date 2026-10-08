@@ -223,7 +223,7 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "Needle3Runtime"
-        private const val NEEDLE_SYSTEM_PROMPT = "You are USMAN AND UMAR, a local Android assistant. Answer greetings and ordinary questions in natural language; never emit tool-call JSON for chat. Use a registered tool only for an explicit device action, and leave validation, approval, and execution to the app. Do not claim an action has completed."
+        private const val NEEDLE_SYSTEM_PROMPT = "You are USMAN AND UMAR, a local Android assistant. Answer greetings and ordinary questions in natural language; never emit tool-call JSON for chat. For a request to list tools, output exactly {\"type\":\"call\",\"tool\":\"list_available_tools\"}. Use only registered tools for explicit actions; the app validates, approves, and executes. Never claim completion."
         private const val BUNDLED_MODEL_ASSET = "needle3/needle3.cact"
         private const val COPY_BUFFER_BYTES = 64 * 1024
         private const val PROGRESS_INTERVAL_BYTES = 512 * 1024L

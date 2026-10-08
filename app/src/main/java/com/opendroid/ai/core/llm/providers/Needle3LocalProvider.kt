@@ -9,6 +9,8 @@ import com.opendroid.ai.core.llm.StreamChunk
 import com.opendroid.ai.core.needle.Needle3LocalRuntime
 import com.opendroid.ai.core.needle.Needle3ResponseParser
 import com.opendroid.ai.core.needle.Needle3Status
+import com.opendroid.ai.core.needle.Needle3PromptBudget
+import com.opendroid.ai.core.needle.Needle3ProviderToolSchema
 import com.opendroid.ai.data.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -24,8 +26,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import org.json.JSONArray
-import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -75,8 +75,11 @@ class Needle3LocalProvider @Inject constructor(
         }
         requireReady()
         val input = buildInput(request)
-        val minimumOutput = if (request.responseFormat == ResponseFormat.JSON) 768 else 640
-        val outputLimit = maxOf(request.maxTokens, minimumOutput).coerceAtMost(768)
+        val outputLimit = if (request.responseFormat == ResponseFormat.JSON) {
+            Needle3PromptBudget.MAX_TOOL_CALL_TOKENS
+        } else {
+            request.maxTokens.coerceAtMost(Needle3PromptBudget.MAX_CHAT_TOKENS).coerceAtLeast(64)
+        }
         val nativeResponse = runtime.complete(input, outputLimit)
         val content = if (request.responseFormat == ResponseFormat.TEXT) {
             Needle3ResponseParser.toNaturalText(
@@ -104,29 +107,25 @@ class Needle3LocalProvider @Inject constructor(
         tools: List<com.opendroid.ai.core.llm.ToolDefinition>
     ): Flow<StreamChunk> = flow {
         requireReady()
-        val schema = JSONArray().apply {
-            tools.forEach { tool ->
-                put(JSONObject()
-                    .put("name", tool.name)
-                    .put("description", tool.description)
-                    .put("parameters", JSONObject(tool.parameters)))
-            }
-        }.toString()
+        val userQuery = messages.lastOrNull { it.sender == ChatMessage.Sender.USER }?.text.orEmpty()
+        Needle3ProviderToolSchema.listAvailableToolsTool(userQuery, tools)?.let { canonicalName ->
+            emit(StreamChunk.ToolCall(canonicalName, "{}"))
+            return@flow
+        }
+        val preparedTools = Needle3ProviderToolSchema.prepare(tools)
         val input = buildString {
             append(PLAN_PROMPT)
             append('\n')
             append(messages.joinToString("\n") { it.text })
         }
-        val response = runtime.completeWithTools(input, schema, 768)
-        val calls = Needle3ResponseParser.parseCalls(response, tools.map { it.name }.toSet())
+        val response = runtime.completeWithTools(input, preparedTools.json, Needle3PromptBudget.MAX_TOOL_CALL_TOKENS)
+        val calls = Needle3ResponseParser.parseCalls(response, preparedTools.allowedNames)
         if (calls.isEmpty()) {
-            emit(StreamChunk.Content(Needle3ResponseParser.toNaturalText(
-                response,
-                messages.lastOrNull { it.sender == ChatMessage.Sender.USER }?.text.orEmpty()
-            )))
+            emit(StreamChunk.Content(Needle3ResponseParser.toolCallFailureOrNaturalText(response, userQuery)))
         } else {
             calls.forEach { call ->
-                emit(StreamChunk.ToolCall(call.name, call.argumentsJson))
+                val canonicalName = preparedTools.canonicalNameByModelName[call.name] ?: call.name
+                emit(StreamChunk.ToolCall(canonicalName, call.argumentsJson))
             }
         }
     }
@@ -145,7 +144,7 @@ class Needle3LocalProvider @Inject constructor(
 
     private companion object {
         const val CHAT_PROMPT = "You are USMAN AND UMAR, a friendly local Android assistant. For greetings and ordinary questions, answer directly in natural language only. Never output JSON, a tool call, or a plan in chat mode. Do not claim device actions were performed."
-        const val PLAN_PROMPT = "For an explicit device-action request, return only a JSON object with a function_calls array. Each call must use a registered action name and valid arguments. Never call tools for greetings or ordinary questions. The app performs validation, approval, and execution; do not claim an action has completed."
+        const val PLAN_PROMPT = "For an explicit action request, return one registered tool call using its supplied name and valid arguments. If asked to list tools, output exactly {\"type\":\"call\",\"tool\":\"list_available_tools\"}. Never call tools for greetings or ordinary questions. The app validates, approves, and executes; do not claim completion."
     }
 
     private fun adaptToExistingPlan(raw: String, goal: String): String {

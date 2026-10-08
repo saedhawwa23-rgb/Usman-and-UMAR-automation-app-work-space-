@@ -19,8 +19,8 @@ android {
         applicationId "com.usmanandumar.app"
         minSdk 28
         targetSdk 34
-        versionCode 9
-        versionName "1.0.8"
+        versionCode 10
+        versionName "1.0.9"
         ndk {
             // Keep ARMv7 distribution compatibility and add ARM64 for Needle 3.
             // CI's hosted x86_64 emulators use this explicit test-only override.

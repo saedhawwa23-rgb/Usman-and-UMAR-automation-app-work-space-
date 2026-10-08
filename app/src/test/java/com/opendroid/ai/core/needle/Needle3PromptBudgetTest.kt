@@ -22,7 +22,9 @@ class Needle3PromptBudgetTest {
         val tools = Json.parseToJsonElement(prefix.toolsJson).jsonArray
 
         assertTrue(prefix.inputBytes <= Needle3PromptBudget.MAX_STATIC_INPUT_BYTES)
-        assertEquals(768, Needle3PromptBudget.MAX_NEW_TOKENS)
+        assertEquals(512, Needle3PromptBudget.MAX_CHAT_TOKENS)
+        assertEquals(1_536, Needle3PromptBudget.MAX_TOOL_CALL_TOKENS)
+        assertEquals(Needle3PromptBudget.MAX_TOOL_CALL_TOKENS, Needle3PromptBudget.MAX_NEW_TOKENS)
         assertTrue(Needle3PromptBudget.utf8Size(prefix.systemPrompt) +
             Needle3PromptBudget.utf8Size(prefix.toolsJson) <= Needle3PromptBudget.MAX_STATIC_INPUT_BYTES)
         assertTrue("Expected a useful, non-empty subset of registered actions", tools.isNotEmpty())

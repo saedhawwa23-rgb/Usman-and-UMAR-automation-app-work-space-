@@ -79,6 +79,34 @@ class Needle3ResponseParserTest {
     }
 
     @Test
+    fun `regex fallback recovers an allowlisted tool alias from truncated JSON`() {
+        val raw = "{\"type\":\"call\",\"tool\":\"list_available_tools\""
+        val calls = Needle3ResponseParser.parseCalls(raw, setOf("list_available_tools"))
+        assertEquals(1, calls.size)
+        assertEquals("list_available_tools", calls.single().name)
+        assertEquals("{}", calls.single().argumentsJson)
+        assertTrue(Needle3ResponseParser.parseCalls(raw, setOf("other_tool")).isEmpty())
+        assertTrue(
+            Needle3ResponseParser.parseCalls(
+                "Text mentioning \\\"tool\\\":\\\"list_available_tools\\\" but not a call object",
+                setOf("list_available_tools")
+            ).isEmpty()
+        )
+    }
+
+    @Test
+    fun `unparseable tool envelopes receive the specified simple-command fallback`() {
+        assertEquals(
+            "Tool parsing failed. Try a simpler command like 'list tools'.",
+            Needle3ResponseParser.toolCallFailureOrNaturalText("{\"type\":\"call\",\"tool\":", "list tools")
+        )
+        assertEquals(
+            "A normal response",
+            Needle3ResponseParser.toolCallFailureOrNaturalText("A normal response", "hello")
+        )
+    }
+
+    @Test
     fun `simple greeting detection does not swallow longer requests`() {
         assertEquals("Hi! What can I help you with?", Needle3ResponseParser.greetingReply("hi!"))
         assertEquals(null, Needle3ResponseParser.greetingReply("hi, set a timer"))
