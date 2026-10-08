@@ -99,13 +99,17 @@ class Needle3LocalProvider @Inject constructor(
     override suspend fun isAvailable(): Boolean = runtime.status.value is com.opendroid.ai.core.needle.Needle3Status.Ready
 
     private fun buildInput(request: LLMRequest): String = buildString {
-        append(request.systemPrompt.take(4_000))
+        append(NEEDLE_RESPONSE_PROMPT)
         append("\n\n")
         request.messages.takeLast(8).forEach { message ->
             append(if (message.sender == ChatMessage.Sender.USER) "User: " else "Assistant: ")
-            append(message.text.take(4_000))
+            append(message.text.take(512))
             append('\n')
         }
+    }
+
+    private companion object {
+        const val NEEDLE_RESPONSE_PROMPT = "You are USMAN AND UMAR, a concise on-device Android assistant. Answer ordinary questions naturally. For device actions, return only a valid structured plan using supported action names and arguments; let the app's existing approval and safety checks govern execution. Ask when required information is missing. Never claim an action has completed."
     }
 
     private fun adaptToExistingPlan(raw: String, goal: String): String {

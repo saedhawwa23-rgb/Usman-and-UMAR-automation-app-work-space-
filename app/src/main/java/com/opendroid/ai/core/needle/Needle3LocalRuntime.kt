@@ -11,6 +11,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.File
 import java.security.MessageDigest
 import org.json.JSONArray
@@ -77,7 +81,10 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
                 throw IllegalStateException("Needle 3 is not installed. Tap Install locally first.")
             }
             loadForCurrentTools(model)
-            Needle3Native.complete(input, maxNewTokens)
+            Needle3Native.complete(
+                Needle3PromptBudget.boundCompletionInput(input),
+                maxNewTokens.coerceIn(64, Needle3PromptBudget.MAX_NEW_TOKENS)
+            )
                 ?: throw IllegalStateException(Needle3Native.lastError().ifBlank { "Needle 3 completion failed" })
         }
     }
@@ -91,7 +98,10 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
                     throw IllegalStateException("Needle 3 is not installed. Tap Install locally first.")
                 }
                 loadForTools(model, toolsJson)
-                Needle3Native.complete(input, maxNewTokens)
+                Needle3Native.complete(
+                    Needle3PromptBudget.boundCompletionInput(input),
+                    maxNewTokens.coerceIn(64, Needle3PromptBudget.MAX_NEW_TOKENS)
+                )
                     ?: throw IllegalStateException(Needle3Native.lastError().ifBlank { "Needle 3 completion failed" })
             }
         }
@@ -136,15 +146,16 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
     }
 
     private fun loadForTools(model: File, tools: String) {
-        val hash = sha256Bytes(tools.toByteArray(Charsets.UTF_8))
+        val prefix = Needle3PromptBudget.fitStaticPrefix(NEEDLE_SYSTEM_PROMPT, tools)
+        val hash = sha256Bytes("${prefix.systemPrompt}\u0000${prefix.toolsJson}".toByteArray(Charsets.UTF_8))
         if (initializedToolsHash == hash) return
         if (!Needle3Native.load(model.readBytes())) {
             throw IllegalStateException(Needle3Native.lastError().ifBlank { "Needle 3 model load failed" })
         }
         val index = File(model.parentFile, "tools.idx")
         if (!Needle3Native.init(
-                "You are USMAN AND UMAR's local Android tool planner. Select only evidenced tool calls.",
-                tools,
+                prefix.systemPrompt,
+                prefix.toolsJson,
                 index.absolutePath
             )) {
             throw IllegalStateException(Needle3Native.lastError().ifBlank { "Needle 3 initialization failed" })
@@ -212,6 +223,7 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "Needle3Runtime"
+        private const val NEEDLE_SYSTEM_PROMPT = "You are USMAN AND UMAR's local Android tool planner. Select only evidenced tool calls."
         private const val BUNDLED_MODEL_ASSET = "needle3/needle3.cact"
         private const val COPY_BUFFER_BYTES = 64 * 1024
         private const val PROGRESS_INTERVAL_BYTES = 512 * 1024L
@@ -256,9 +268,39 @@ object Needle3ToolSchema {
     }
 
     fun json(): String {
-        val tools = JSONArray()
-        definitions().forEach(tools::put)
-        return tools.toString()
+        return buildJsonArray {
+            ActionSchema.ALL_ACTIONS.forEach { action ->
+                add(buildJsonObject {
+                    put("name", action.name)
+                    put("description", action.description)
+                    put("parameters", buildJsonObject {
+                        put("type", "object")
+                        put("properties", buildJsonObject {
+                            action.params.forEach { param ->
+                                put(param.name, buildJsonObject {
+                                    put("type", when (param.type) {
+                                        ParamType.INT -> "integer"
+                                        ParamType.BOOLEAN -> "boolean"
+                                        ParamType.ENUM, ParamType.STRING -> "string"
+                                    })
+                                    if (param.enumValues.isNotEmpty()) {
+                                        put("enum", buildJsonArray {
+                                            param.enumValues.forEach { add(JsonPrimitive(it)) }
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                        val required = action.params.filter { it.required }
+                        if (required.isNotEmpty()) {
+                            put("required", buildJsonArray {
+                                required.forEach { add(JsonPrimitive(it.name)) }
+                            })
+                        }
+                    })
+                })
+            }
+        }.toString()
     }
 }
 
