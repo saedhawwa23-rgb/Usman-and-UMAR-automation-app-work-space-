@@ -38,19 +38,21 @@ class Needle3LocalProvider @Inject constructor(
 
     suspend fun ensureReady(): Needle3Status =
         if (runtime.status.value is Needle3Status.Ready) runtime.status.value
-        else runtime.installAndLoad()
+        else runtime.loadExternalModel()
 
     private suspend fun requireReady() {
         when (val status = ensureReady()) {
             is Needle3Status.Ready -> Unit
             is Needle3Status.Error -> throw IllegalStateException("Qwen 3 is not ready: ${status.message}")
             is Needle3Status.Unsupported -> throw IllegalStateException("Qwen 3 is not ready: ${status.message}")
-            Needle3Status.NotInstalled -> throw IllegalStateException("Qwen 3 is not ready: model installation did not complete")
+            Needle3Status.NotInstalled -> throw IllegalStateException(Needle3LocalRuntime.MODEL_MISSING_MESSAGE)
+            Needle3Status.PermissionRequired -> throw IllegalStateException(
+                "Allow storage access to read ${Needle3LocalRuntime.MODEL_FILE_PATH}."
+            )
             Needle3Status.Loading,
-            is Needle3Status.Downloading,
             Needle3Status.Verifying,
             Needle3Status.Initializing ->
-                throw IllegalStateException("Qwen 3 is not ready: model installation is still in progress")
+                throw IllegalStateException("Qwen 3 is still checking or loading the external model")
         }
     }
 

@@ -1,6 +1,9 @@
 package com.opendroid.ai.core.needle
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import com.opendroid.ai.core.agent.ActionSchema
 import com.opendroid.ai.core.agent.ParamType
@@ -15,7 +18,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.io.File
@@ -23,11 +25,11 @@ import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Local-only Qwen 3 engine backed by the bundled GGUF model and llama.cpp. */
+/** Local-only Qwen 3 engine backed by the separately downloaded GGUF model and llama.cpp. */
 sealed class Needle3Status {
     data object NotInstalled : Needle3Status()
+    data object PermissionRequired : Needle3Status()
     data object Loading : Needle3Status()
-    data class Downloading(val bytesCopied: Long) : Needle3Status()
     data object Verifying : Needle3Status()
     data object Initializing : Needle3Status()
     data object Ready : Needle3Status()
@@ -42,18 +44,35 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
     private val mutex = Mutex()
     private var loadedPath: String? = null
     private var loadedModifiedAt: Long? = null
+    private var loadedSize: Long? = null
     private var nativeContextReady = false
 
-    suspend fun installAndLoad(): Needle3Status = withContext(Dispatchers.IO) {
+    suspend fun loadExternalModel(): Needle3Status = withContext(Dispatchers.IO) {
         mutex.withLock {
-            var stage = "MODEL_INSTALL_FAILED"
+            var stage = "MODEL_LOOKUP_FAILED"
             try {
                 state.value = Needle3Status.Loading
-                val model = modelFile()
-                if (!model.isFile || model.length() != MODEL_SIZE || sha256(model) != MODEL_SHA256) {
-                    state.value = Needle3Status.Downloading(0L)
-                    installBundledModel(model)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    state.value = Needle3Status.Unsupported(
+                        "Direct access to /sdcard/Download is not available on Android 13 and newer in this release."
+                    )
+                    return@withLock state.value
                 }
+                if (!hasDownloadReadPermission()) {
+                    state.value = Needle3Status.PermissionRequired
+                    return@withLock state.value
+                }
+
+                val model = modelFile()
+                if (!model.isFile || !model.canRead()) {
+                    state.value = Needle3Status.NotInstalled
+                    return@withLock state.value
+                }
+                if (isCurrentModelLoaded(model)) {
+                    state.value = Needle3Status.Ready
+                    return@withLock state.value
+                }
+
                 stage = "MODEL_CHECKSUM_FAILED"
                 state.value = Needle3Status.Verifying
                 verifyModel(model)
@@ -61,12 +80,12 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
                 ensureNativeSupported()
                 stage = "MODEL_INITIALIZATION_FAILED"
                 state.value = Needle3Status.Initializing
-                loadNativeIfNeeded(model)
+                loadNativeIfNeeded(model, modelVerified = true)
                 state.value = Needle3Status.Ready
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
-                Log.e(TAG, "$stage: Qwen 3 local install/load failed", error)
+                Log.e(TAG, "$stage: Qwen 3 external model load failed", error)
                 state.value = Needle3Status.Error("$stage: ${error.message ?: "Qwen 3 could not be loaded"}")
             }
             state.value
@@ -77,9 +96,17 @@ class Needle3LocalRuntime @Inject constructor(private val context: Context) {
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 ensureNativeSupported()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    throw IllegalStateException("Direct /sdcard/Download access is not available on this Android version.")
+                }
+                if (!hasDownloadReadPermission()) {
+                    state.value = Needle3Status.PermissionRequired
+                    throw IllegalStateException("Allow file access to read ${MODEL_FILE_PATH}.")
+                }
                 val model = modelFile()
-                if (!model.isFile || model.length() != MODEL_SIZE) {
-                    throw IllegalStateException("Qwen 3 is not installed. Install the bundled Qwen 3 model first.")
+                if (!model.isFile || !model.canRead()) {
+                    state.value = Needle3Status.NotInstalled
+                    throw IllegalStateException(MODEL_MISSING_MESSAGE)
                 }
                 loadNativeIfNeeded(model)
                 val prompt = if (input.contains("<|im_start|>system")) {
@@ -119,16 +146,18 @@ For a tool call, output exactly <tool_call>{"name":"tool_name","arguments":{}}</
         return response
     }
 
-    fun modelFile(): File = File(context.filesDir, "models/qwen3.gguf")
+    fun modelFile(): File = File(MODEL_FILE_PATH)
 
-    fun hasBundledModelAsset(): Boolean = try {
-        context.assets.open(BUNDLED_MODEL_ASSET).use { }
-        true
-    } catch (_: Exception) {
-        false
-    }
+    private fun hasDownloadReadPermission(): Boolean =
+        context.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
 
     private fun initialStatus(): Needle3Status = Needle3Status.NotInstalled
+
+    private fun isCurrentModelLoaded(model: File): Boolean =
+        nativeContextReady &&
+            loadedPath == model.absolutePath &&
+            loadedModifiedAt == model.lastModified() &&
+            loadedSize == model.length()
 
     private fun ensureNativeSupported() {
         if (!Qwen3Native.isSupported) {
@@ -138,10 +167,11 @@ For a tool call, output exactly <tool_call>{"name":"tool_name","arguments":{}}</
         }
     }
 
-    private fun loadNativeIfNeeded(model: File) {
+    private fun loadNativeIfNeeded(model: File, modelVerified: Boolean = false) {
         val path = model.absolutePath
-        if (nativeContextReady && loadedPath == path && loadedModifiedAt == model.lastModified()) return
+        if (isCurrentModelLoaded(model)) return
         nativeContextReady = false
+        if (!modelVerified) verifyModel(model)
         if (!Qwen3Native.loadModel(path)) {
             throw IllegalStateException(Qwen3Native.lastError().ifBlank { "llama.cpp could not load Qwen 3" })
         }
@@ -150,42 +180,8 @@ For a tool call, output exactly <tool_call>{"name":"tool_name","arguments":{}}</
         }
         loadedPath = path
         loadedModifiedAt = model.lastModified()
+        loadedSize = model.length()
         nativeContextReady = true
-    }
-
-    private fun installBundledModel(destination: File) {
-        destination.parentFile?.mkdirs()
-        val partial = File(destination.parentFile, "qwen3.gguf.installing")
-        if (partial.exists()) partial.delete()
-        try {
-            context.assets.open(BUNDLED_MODEL_ASSET).buffered().use { input ->
-                partial.outputStream().buffered().use { output ->
-                    val buffer = ByteArray(COPY_BUFFER_BYTES)
-                    var copied = 0L
-                    var lastReported = 0L
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        output.write(buffer, 0, count)
-                        copied += count
-                        if (copied - lastReported >= PROGRESS_INTERVAL_BYTES || copied == MODEL_SIZE) {
-                            state.value = Needle3Status.Downloading(copied)
-                            lastReported = copied
-                        }
-                    }
-                    output.flush()
-                }
-            }
-            if (partial.length() != MODEL_SIZE || sha256(partial) != MODEL_SHA256) {
-                throw IllegalStateException("Bundled Qwen 3 model failed its size/SHA-256 check")
-            }
-            if (destination.exists() && !destination.delete()) {
-                throw IllegalStateException("Could not replace the existing Qwen 3 model")
-            }
-            if (!partial.renameTo(destination)) throw IllegalStateException("Could not install Qwen 3 model")
-        } finally {
-            if (partial.exists()) partial.delete()
-        }
     }
 
     private fun verifyModel(model: File) {
@@ -210,9 +206,8 @@ For a tool call, output exactly <tool_call>{"name":"tool_name","arguments":{}}</
 
     companion object {
         private const val TAG = "Qwen3Runtime"
-        private const val BUNDLED_MODEL_ASSET = "models/qwen3.gguf"
-        private const val COPY_BUFFER_BYTES = 1024 * 1024
-        private const val PROGRESS_INTERVAL_BYTES = 4 * 1024 * 1024L
+        const val MODEL_FILE_PATH = "/sdcard/Download/qwen3.gguf"
+        const val MODEL_MISSING_MESSAGE = "Please download the Qwen 3 model and place it in /sdcard/Download/"
         private const val CONTEXT_TOKENS = 4096
         private const val MAX_CHAT_TOKENS = 512
         private const val MAX_TOOL_CALL_TOKENS = 1536
@@ -225,7 +220,7 @@ For a tool call, output exactly <tool_call>{"name":"tool_name","arguments":{}}</
     }
 }
 
-/** Compact list of app actions supplied to the older local-planner surface. */
+/** Compact list of app actions supplied to the local planner. */
 object Needle3ToolSchema {
     fun definitions(): List<JsonObject> = ActionSchema.ALL_ACTIONS.map { action ->
         val properties = buildJsonObject {

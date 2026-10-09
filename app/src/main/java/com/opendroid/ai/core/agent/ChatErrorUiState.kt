@@ -97,7 +97,7 @@ fun ChatErrorUiState.title(): String = when (category) {
 
 fun ChatErrorUiState.guidance(): String = when (category) {
     LLMError.Needle3NotReady -> buildString {
-        append("Install the bundled Qwen 3 model locally and wait until its status is Ready. No cloud API key is required.")
+        append("Download qwen3.gguf and place it at /sdcard/Download/qwen3.gguf, then allow file access and check Qwen 3 Local again. No cloud API key is required.")
         redactedDetail?.toString()?.takeIf { it.isNotBlank() }?.let { append(" Technical detail: $it") }
     }
     LLMError.AuthMissing -> "Add an API key in Settings."
