@@ -38,7 +38,7 @@ fun UniversalAgentScreen(viewModel: UniversalAgentViewModel = hiltViewModel()) {
     ) {
         Text("UNIVERSAL LOCAL AGENT", color = AppTheme.colors.textPrimary, fontSize = 22.sp)
         Text(
-            "Needle 3 plans locally. Connectors discover tools, enforce authorization, and return redacted results.",
+            "Qwen 3 plans locally. Connectors discover tools, enforce authorization, and return redacted results.",
             color = AppTheme.colors.textSecondary
         )
         OutlinedTextField(
@@ -49,7 +49,7 @@ fun UniversalAgentScreen(viewModel: UniversalAgentViewModel = hiltViewModel()) {
             placeholder = { Text("Deploy my project and check the logs") }
         )
         Button(onClick = { viewModel.run(goal) }, enabled = goal.isNotBlank() && !running) {
-            Text(if (running) "RUNNING LOCALLY…" else "RUN WITH NEEDLE 3")
+            Text(if (running) "RUNNING LOCALLY…" else "RUN WITH QWEN 3")
         }
         Text("CLOUDFLARE CONNECTOR", color = AppTheme.colors.textPrimary, fontSize = 16.sp)
         Text("Status: ${cloudflare.status}", color = AppTheme.colors.textSecondary)

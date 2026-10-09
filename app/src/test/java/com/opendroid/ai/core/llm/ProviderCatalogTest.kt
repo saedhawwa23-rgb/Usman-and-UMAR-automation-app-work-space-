@@ -59,6 +59,14 @@ class ProviderCatalogTest {
     }
 
     @Test
+    fun `legacy Needle provider and model normalize to Qwen 3`() {
+        val legacy = LLMConfig(activeProvider = "Needle 3 (Local)", activeModel = "needle3")
+        assertEquals(ProviderCatalog.QWEN3_LOCAL, ProviderCatalog.canonicalName(legacy.activeProvider))
+        assertEquals("qwen3-0.6b-q4_k_m", legacy.selectedModelFor(ProviderCatalog.QWEN3_LOCAL))
+        assertEquals("qwen3-0.6b-q4_k_m", ProviderCatalog.defaultModel(ProviderCatalog.QWEN3_LOCAL))
+    }
+
+    @Test
     fun `untrusted persisted Claude ids never cross the provider boundary`() {
         val config = LLMConfig(
             activeProvider = "Anthropic Claude",

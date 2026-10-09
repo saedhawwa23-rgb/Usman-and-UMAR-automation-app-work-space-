@@ -5,7 +5,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 /**
- * Read-only local tools used to prove that Needle 3 can discover and execute
+ * Read-only local tools used to prove that Qwen 3 can discover and execute
  * the universal registry without any cloud credential or network request.
  */
 class LocalRegistryConnector(
@@ -38,7 +38,7 @@ class LocalRegistryConnector(
     ): ConnectorResult {
         val payload = when (invocation.tool.name) {
             "list_available_tools" -> buildJsonObject {
-                put("source", "Needle 3 (Local)")
+                put("source", "Qwen 3 (Local)")
                 putJsonArray("tools") {
                     registry.allTools()
                         .filterNot { it.connectorId == id }
@@ -53,7 +53,7 @@ class LocalRegistryConnector(
                 }
             }
             "list_connectors" -> buildJsonObject {
-                put("source", "Needle 3 (Local)")
+                put("source", "Qwen 3 (Local)")
                 putJsonArray("connectors") {
                     registry.all().forEach { connector ->
                         add(buildJsonObject {

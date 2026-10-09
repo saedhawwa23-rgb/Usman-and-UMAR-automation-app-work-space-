@@ -19,6 +19,7 @@ object Needle3ResponseParser {
     private val argumentKeys = listOf("arguments", "params", "args", "input")
     private val nameKeys = listOf("name", "action", "tool_name", "function_name", "tool")
     private val malformedToolName = Regex("\\\"tool\\\"\\s*:\\s*\\\"([A-Za-z_][A-Za-z0-9_]*)\\\"")
+    private val qwenToolBlock = Regex("(?is)<tool_call>\\s*(.*?)\\s*</tool_call>")
 
     /**
      * Parse native `type: call`, OpenAI-style function_calls/tool_calls, and nested
@@ -26,18 +27,24 @@ object Needle3ResponseParser {
      * supplying connector tools pass their explicit allowed-name set instead.
      */
     fun parseCalls(raw: String, allowedNames: Set<String>? = null): List<Needle3ParsedCall> {
+        val visible = stripThinking(raw)
+        val qwenCalls = qwenToolBlock.findAll(visible).mapNotNull { match ->
+            val root = parseObject(match.groupValues[1]) ?: return@mapNotNull null
+            parseCallElement(root, allowedNames)
+        }.toList()
+        if (qwenCalls.isNotEmpty()) return qwenCalls
         val parsed = runCatching {
-            val root = parseObject(raw) ?: return@runCatching emptyList()
+            val root = parseObject(visible) ?: return@runCatching emptyList()
             val list = (root["function_calls"] as? JsonArray)
                 ?: (root["tool_calls"] as? JsonArray)
                 ?: (root["calls"] as? JsonArray)
             if (list != null) list.mapNotNull { parseCallElement(it, allowedNames) }
             else listOfNotNull(parseCallElement(root, allowedNames))
         }.getOrDefault(emptyList())
-        if (parsed.isNotEmpty() || parseObject(raw) != null) return parsed
+        if (parsed.isNotEmpty() || parseObject(visible) != null) return parsed
 
         // Recover only a truncated call envelope, never an incidental tool mention in text.
-        val candidateText = stripFence(raw)
+        val candidateText = stripFence(visible)
         if (!candidateText.startsWith("{") ||
             !Regex("\\\"type\\\"\\s*:\\s*\\\"call\\\"").containsMatchIn(candidateText)
         ) return emptyList()
@@ -54,13 +61,14 @@ object Needle3ResponseParser {
 
     /** Return display-safe text; a chat response can never leak raw call JSON. */
     fun toNaturalText(raw: String, userQuery: String): String {
-        val root = parseObject(raw) ?: return if (looksLikeStructuredOutput(raw)) {
+        val visible = stripThinking(raw)
+        val root = parseObject(visible) ?: return if (looksLikeStructuredOutput(visible)) {
             greetingReply(userQuery) ?: "I couldn't format that local response. Please try again."
         } else {
             raw.trim()
         }
         val type = stringValue(root["type"]).orEmpty().lowercase()
-        val calls = parseCalls(raw)
+        val calls = parseCalls(visible)
         val isCallEnvelope = type == "call" || calls.isNotEmpty()
 
         if (isCallEnvelope) {
@@ -130,6 +138,7 @@ object Needle3ResponseParser {
 
     private fun looksLikeStructuredOutput(raw: String): Boolean {
         val candidate = stripFence(raw)
+        if (qwenToolBlock.containsMatchIn(candidate)) return true
         if (!candidate.startsWith("{")) return false
         return Regex("\\\"(?:type|function_calls|tool_calls|calls|success|error)\\\"\\s*:")
             .containsMatchIn(candidate)
@@ -137,6 +146,7 @@ object Needle3ResponseParser {
 
     private fun looksLikeToolCallOutput(raw: String): Boolean {
         val candidate = stripFence(raw)
+        if (qwenToolBlock.containsMatchIn(candidate) || candidate.contains("<tool_call>")) return true
         val root = parseObject(candidate)
         val type = stringValue(root?.get("type")).orEmpty().lowercase()
         return type == "call" || root?.let {
@@ -147,6 +157,11 @@ object Needle3ResponseParser {
     private fun stripFence(raw: String): String = raw.trim()
         .removePrefix("```json").removePrefix("```JSON").removePrefix("```")
         .removeSuffix("```").trim()
+
+    private fun stripThinking(raw: String): String = raw
+        .replace(Regex("(?is)<think>.*?</think>"), "")
+        .replace(Regex("(?is)^\\s*<think>.*$"), "")
+        .trim()
 
     private fun extractDisplayText(element: JsonElement?): String? = when (element) {
         is JsonPrimitive -> element.contentOrNull?.takeIf { it.isNotBlank() }

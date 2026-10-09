@@ -32,6 +32,16 @@ class Needle3ResponseParserTest {
     }
 
     @Test
+    fun `Qwen tool_call block extracts name and arguments after hidden thinking`() {
+        val raw = """<think>choose the registered read-only tool</think><tool_call>{"name":"list_available_tools","arguments":{}}</tool_call>"""
+        val calls = Needle3ResponseParser.parseCalls(raw, setOf("list_available_tools"))
+        assertEquals(1, calls.size)
+        assertEquals("list_available_tools", calls.single().name)
+        assertEquals("{}", calls.single().argumentsJson)
+        assertEquals("Hi! What can I help you with?", Needle3ResponseParser.toNaturalText(raw, "hi"))
+    }
+
+    @Test
     fun `unknown and unprovided tool names are rejected`() {
         val unknown = """{"type":"call","name":"DELETE_ALL_DATA","arguments":{}}"""
         assertTrue(Needle3ResponseParser.parseCalls(unknown).isEmpty())

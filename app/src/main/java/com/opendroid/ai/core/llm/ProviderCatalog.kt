@@ -15,7 +15,10 @@ object ProviderCatalog {
 
     const val ON_DEVICE = "On-Device AI"
     const val LEGACY_ON_DEVICE = "Gemma 4 (On-device)"
-    const val NEEDLE3_LOCAL = "Needle 3 (Local)"
+    const val QWEN3_LOCAL = "Qwen 3 (Local)"
+    /** Source-compatibility alias; persisted Needle selections normalize below. */
+    const val NEEDLE3_LOCAL = QWEN3_LOCAL
+    const val LEGACY_NEEDLE3_LOCAL = "Needle 3 (Local)"
 
     /**
      * The model a provider starts on before its live list has been fetched.
@@ -41,7 +44,7 @@ object ProviderCatalog {
         ProviderSpec("Ollama", "llama3"),
         ProviderSpec(ON_DEVICE, "gemma-4-on-device"),
         ProviderSpec("LiteRT-LM (On-device)", "gemma3-1b-it"),
-        ProviderSpec(NEEDLE3_LOCAL, "needle3"),
+        ProviderSpec(QWEN3_LOCAL, "qwen3-0.6b-q4_k_m"),
         // Compatibility entry for the directly addressable AI Core backend.
         // Its persisted key is normalized to the unified on-device provider.
         ProviderSpec(LEGACY_ON_DEVICE, "gemma-4-on-device", ON_DEVICE)
@@ -50,8 +53,11 @@ object ProviderCatalog {
     private val byExternalName = providers.associateBy { it.displayName }
     private val byCanonicalName = providers.associateBy { it.canonicalName }
 
-    fun canonicalName(providerName: String): String =
-        byExternalName[providerName.trim()]?.canonicalName ?: providerName.trim()
+    fun canonicalName(providerName: String): String {
+        val normalized = providerName.trim()
+        if (normalized.equals(LEGACY_NEEDLE3_LOCAL, ignoreCase = true)) return QWEN3_LOCAL
+        return byExternalName[normalized]?.canonicalName ?: normalized
+    }
 
     fun isKnown(providerName: String): Boolean {
         val normalized = canonicalName(providerName)
@@ -86,7 +92,7 @@ object ProviderCatalog {
     }
 
     fun isOnDevice(providerName: String): Boolean = when (canonicalName(providerName)) {
-        ON_DEVICE, "LiteRT-LM (On-device)", NEEDLE3_LOCAL -> true
+        ON_DEVICE, "LiteRT-LM (On-device)", QWEN3_LOCAL -> true
         else -> false
     }
 }

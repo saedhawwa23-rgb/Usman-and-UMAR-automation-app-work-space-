@@ -384,7 +384,7 @@ fun ChatScreen(
                     // visibleAgentState.
                     if (visibleAgentState is AgentState.Thinking) {
                         item {
-                            ThinkingBubble(if (usingNeedle3) "Needle 3 is thinking..." else "Thinking...")
+                            ThinkingBubble(if (usingNeedle3) "Qwen 3 is thinking..." else "Thinking...")
                         }
                     }
 
@@ -694,7 +694,7 @@ fun AgentStatusSubtitle(
         when (state) {
             is AgentState.Idle -> "Online & Ready"
             is AgentState.Listening -> "Listening to voice input..."
-            is AgentState.Thinking -> if (needle3Active) "Needle 3 is thinking..." else "Analyzing intent & planning..."
+            is AgentState.Thinking -> if (needle3Active) "Qwen 3 is thinking..." else "Analyzing intent & planning..."
             is AgentState.PlanProposed -> "Requires Plan Approval"
             is AgentState.ExecutingPlan -> "Executing: ${state.currentStepDesc}"
             is AgentState.Speaking -> "Speaking: ${state.text.take(30)}..."

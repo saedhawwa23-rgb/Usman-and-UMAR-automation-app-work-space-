@@ -15,6 +15,7 @@ import com.opendroid.ai.core.security.ProviderCredentialRecoveryState
 import com.opendroid.ai.core.security.ProviderCredentialStore
 import com.opendroid.ai.data.models.AutoReplyConfig
 import com.opendroid.ai.data.models.LLMConfig
+import com.opendroid.ai.core.llm.ProviderCatalog
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -311,14 +312,25 @@ class SettingsRepository internal constructor(
         }
     }
 
-    private fun decodeConfig(configStr: String?): LLMConfig = if (configStr != null) {
-        try {
-            json.decodeFromString<LLMConfig>(configStr)
-        } catch (_: Exception) {
-            LLMConfig()
+    private fun decodeConfig(configStr: String?): LLMConfig {
+        val decoded = if (configStr != null) {
+            try {
+                json.decodeFromString<LLMConfig>(configStr)
+            } catch (_: Exception) {
+                LLMConfig()
+            }
+        } else LLMConfig()
+        val provider = ProviderCatalog.canonicalName(decoded.activeProvider)
+        val activeModel = if (provider == ProviderCatalog.QWEN3_LOCAL &&
+            decoded.activeModel.equals("needle3", ignoreCase = true)
+        ) ProviderCatalog.defaultModel(provider) else decoded.activeModel
+        val selectedModels = decoded.selectedModels?.entries?.associate { (key, model) ->
+            val canonical = ProviderCatalog.canonicalName(key)
+            canonical to if (canonical == ProviderCatalog.QWEN3_LOCAL && model.equals("needle3", ignoreCase = true)) {
+                ProviderCatalog.defaultModel(canonical)
+            } else model
         }
-    } else {
-        LLMConfig()
+        return decoded.copy(activeProvider = provider, activeModel = activeModel, selectedModels = selectedModels)
     }
 
     suspend fun saveModelCache(provider: String, models: List<com.opendroid.ai.core.llm.AIModel>) {

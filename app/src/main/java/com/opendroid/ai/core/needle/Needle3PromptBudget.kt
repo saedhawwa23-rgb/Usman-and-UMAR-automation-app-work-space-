@@ -13,7 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * Conservative limits for Needle 3's 8,192-token context. The native API does not
+ * Conservative prompt limits for the Qwen 3 local context. The native API does not
  * expose a tokenizer/count-only call, so UTF-8 bytes are used as a strict upper
  * bound for byte-fallback tokenizers. We reserve 1,000 context tokens for the
  * native chat template/special tokens, and keep actual static inputs below
@@ -44,7 +44,7 @@ object Needle3PromptBudget {
             .coerceAtLeast(TOOLS_JSON_OVERHEAD_BYTES)
         val boundedTools = compactToolsJson(toolsJson, remaining)
         val bytes = utf8Size(boundedSystem) + utf8Size(boundedTools)
-        check(bytes <= MAX_STATIC_INPUT_BYTES) { "Needle static inputs exceed byte budget: $bytes" }
+        check(bytes <= MAX_STATIC_INPUT_BYTES) { "Qwen static inputs exceed byte budget: $bytes" }
         return StaticPrefix(boundedSystem, boundedTools, bytes)
     }
 
@@ -66,7 +66,7 @@ object Needle3PromptBudget {
             if (utf8Size(candidate) <= budget) output.add(compact)
         }
         val result = JsonArray(output).toString()
-        check(utf8Size(result) <= budget) { "Compacted Needle tool schema exceeds byte budget" }
+        check(utf8Size(result) <= budget) { "Compacted Qwen tool schema exceeds byte budget" }
         return result
     }
 

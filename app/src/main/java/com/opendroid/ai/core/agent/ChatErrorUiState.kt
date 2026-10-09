@@ -81,7 +81,7 @@ fun ChatErrorUiState.primaryAction(): ChatErrorPrimaryAction = when (category) {
 }
 
 fun ChatErrorUiState.title(): String = when (category) {
-    LLMError.Needle3NotReady -> "Needle 3 is not ready"
+    LLMError.Needle3NotReady -> "Qwen 3 is not ready"
     LLMError.AuthMissing -> "Set up $provider to continue"
     LLMError.AuthInvalid -> "$provider rejected the API key"
     LLMError.QuotaExhausted -> "$provider has no credits available"
@@ -97,7 +97,7 @@ fun ChatErrorUiState.title(): String = when (category) {
 
 fun ChatErrorUiState.guidance(): String = when (category) {
     LLMError.Needle3NotReady -> buildString {
-        append("Install the Needle 3 model locally and wait until its status is Ready. No cloud API key is required.")
+        append("Install the bundled Qwen 3 model locally and wait until its status is Ready. No cloud API key is required.")
         redactedDetail?.toString()?.takeIf { it.isNotBlank() }?.let { append(" Technical detail: $it") }
     }
     LLMError.AuthMissing -> "Add an API key in Settings."

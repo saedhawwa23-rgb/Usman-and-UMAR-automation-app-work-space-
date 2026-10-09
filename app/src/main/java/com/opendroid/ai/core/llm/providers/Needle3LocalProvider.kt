@@ -7,40 +7,35 @@ import com.opendroid.ai.core.llm.ProviderCatalog
 import com.opendroid.ai.core.llm.ResponseFormat
 import com.opendroid.ai.core.llm.StreamChunk
 import com.opendroid.ai.core.needle.Needle3LocalRuntime
-import com.opendroid.ai.core.needle.Needle3ResponseParser
-import com.opendroid.ai.core.needle.Needle3Status
 import com.opendroid.ai.core.needle.Needle3PromptBudget
 import com.opendroid.ai.core.needle.Needle3ProviderToolSchema
+import com.opendroid.ai.core.needle.Needle3ResponseParser
+import com.opendroid.ai.core.needle.Needle3Status
+import com.opendroid.ai.core.needle.Needle3ToolSchema
+import com.opendroid.ai.core.needle.Qwen3PromptFormatter
 import com.opendroid.ai.data.models.ChatMessage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Needle 3 provider. It performs local structured action selection only; it never
- * contacts an AI API and does not replace the app's existing chat providers.
- */
+/** Qwen 3 local provider; tool execution still flows through the app's existing safeguards. */
 @Singleton
 class Needle3LocalProvider @Inject constructor(
     private val runtime: Needle3LocalRuntime
 ) : LLMProvider {
-    override val name: String = ProviderCatalog.NEEDLE3_LOCAL
-    override val availableModels: List<String> = listOf("needle3")
+    override val name: String = ProviderCatalog.QWEN3_LOCAL
+    override val availableModels: List<String> = listOf(QWEN_MODEL_ID)
 
-    /** Stages the bundled .cact file when needed, verifies it, then initializes native Needle 3. */
     suspend fun ensureReady(): Needle3Status =
         if (runtime.status.value is Needle3Status.Ready) runtime.status.value
         else runtime.installAndLoad()
@@ -48,14 +43,14 @@ class Needle3LocalProvider @Inject constructor(
     private suspend fun requireReady() {
         when (val status = ensureReady()) {
             is Needle3Status.Ready -> Unit
-            is Needle3Status.Error -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
-            is Needle3Status.Unsupported -> throw IllegalStateException("Needle 3 is not ready: ${status.message}")
-            Needle3Status.NotInstalled -> throw IllegalStateException("Needle 3 is not ready: model installation did not complete")
+            is Needle3Status.Error -> throw IllegalStateException("Qwen 3 is not ready: ${status.message}")
+            is Needle3Status.Unsupported -> throw IllegalStateException("Qwen 3 is not ready: ${status.message}")
+            Needle3Status.NotInstalled -> throw IllegalStateException("Qwen 3 is not ready: model installation did not complete")
             Needle3Status.Loading,
             is Needle3Status.Downloading,
             Needle3Status.Verifying,
             Needle3Status.Initializing ->
-                throw IllegalStateException("Needle 3 is not ready: model installation is still in progress")
+                throw IllegalStateException("Qwen 3 is not ready: model installation is still in progress")
         }
     }
 
@@ -67,7 +62,7 @@ class Needle3LocalProvider @Inject constructor(
                 return@withContext LLMResponse(
                     content = greeting,
                     tokensUsed = 0,
-                    model = "needle3",
+                    model = QWEN_MODEL_ID,
                     provider = name,
                     latencyMs = System.currentTimeMillis() - started
                 )
@@ -82,17 +77,14 @@ class Needle3LocalProvider @Inject constructor(
         }
         val nativeResponse = runtime.complete(input, outputLimit)
         val content = if (request.responseFormat == ResponseFormat.TEXT) {
-            Needle3ResponseParser.toNaturalText(
-                nativeResponse,
-                userQuery
-            )
+            Needle3ResponseParser.toNaturalText(nativeResponse, userQuery)
         } else {
             adaptToExistingPlan(nativeResponse, input)
         }
         LLMResponse(
             content = content,
             tokensUsed = nativeResponse.length / 4,
-            model = "needle3",
+            model = QWEN_MODEL_ID,
             provider = name,
             latencyMs = System.currentTimeMillis() - started
         )
@@ -113,12 +105,15 @@ class Needle3LocalProvider @Inject constructor(
             return@flow
         }
         val preparedTools = Needle3ProviderToolSchema.prepare(tools)
-        val input = buildString {
-            append(PLAN_PROMPT)
-            append('\n')
-            append(messages.joinToString("\n") { it.text })
+        val conversation = messages.takeLast(8).joinToString("\n") { message ->
+            val role = if (message.sender == ChatMessage.Sender.USER) "User" else "Assistant"
+            "$role: ${message.text.take(512)}"
         }
-        val response = runtime.completeWithTools(input, preparedTools.json, Needle3PromptBudget.MAX_TOOL_CALL_TOKENS)
+        val response = runtime.completeWithTools(
+            input = conversation,
+            toolsJson = preparedTools.json,
+            maxNewTokens = Needle3PromptBudget.MAX_TOOL_CALL_TOKENS
+        )
         val calls = Needle3ResponseParser.parseCalls(response, preparedTools.allowedNames)
         if (calls.isEmpty()) {
             emit(StreamChunk.Content(Needle3ResponseParser.toolCallFailureOrNaturalText(response, userQuery)))
@@ -130,28 +125,31 @@ class Needle3LocalProvider @Inject constructor(
         }
     }
 
-    override suspend fun isAvailable(): Boolean = runtime.status.value is com.opendroid.ai.core.needle.Needle3Status.Ready
+    override suspend fun isAvailable(): Boolean = runtime.status.value is Needle3Status.Ready
 
-    private fun buildInput(request: LLMRequest): String = buildString {
-        append(if (request.responseFormat == ResponseFormat.TEXT) CHAT_PROMPT else PLAN_PROMPT)
-        append("\n\n")
-        request.messages.takeLast(8).forEach { message ->
-            append(if (message.sender == ChatMessage.Sender.USER) "User: " else "Assistant: ")
-            append(message.text.take(512))
-            append('\n')
+    private fun buildInput(request: LLMRequest): String {
+        if (request.responseFormat == ResponseFormat.TEXT) {
+            return Qwen3PromptFormatter.chat(CHAT_PROMPT, request.messages)
         }
-    }
-
-    private companion object {
-        const val CHAT_PROMPT = "You are USMAN AND UMAR, a friendly local Android assistant. For greetings and ordinary questions, answer directly in natural language only. Never output JSON, a tool call, or a plan in chat mode. Do not claim device actions were performed."
-        const val PLAN_PROMPT = "For an explicit action request, return one registered tool call using its supplied name and valid arguments. If asked to list tools, output exactly {\"type\":\"call\",\"tool\":\"list_available_tools\"}. Never call tools for greetings or ordinary questions. The app validates, approves, and executes; do not claim completion."
+        val prefix = Needle3PromptBudget.fitStaticPrefix(PLAN_PROMPT, Needle3ToolSchema.json())
+        val system = """${prefix.systemPrompt}
+Registered actions (compact JSON schema): ${prefix.toolsJson}
+Return an action only as <tool_call>{"name":"action_name","arguments":{}}</tool_call>."""
+        val conversation = request.messages.takeLast(8).joinToString("\n") { message ->
+            val role = if (message.sender == ChatMessage.Sender.USER) "User" else "Assistant"
+            "$role: ${message.text.take(512)}"
+        }
+        return Qwen3PromptFormatter.oneUserMessage(
+            system,
+            Needle3PromptBudget.boundCompletionInput(conversation)
+        )
     }
 
     private fun adaptToExistingPlan(raw: String, goal: String): String {
         val calls = Needle3ResponseParser.parseCalls(raw)
         if (calls.isEmpty()) return raw
         return buildJsonObject {
-            put("planId", "needle3-${System.currentTimeMillis()}")
+            put("planId", "qwen3-${System.currentTimeMillis()}")
             put("goal", goal.take(500))
             put("estimatedDuration", "instant")
             put("estimatedSteps", calls.size)
@@ -159,9 +157,9 @@ class Needle3LocalProvider @Inject constructor(
                 calls.forEachIndexed { index, call ->
                     val args = Json.parseToJsonElement(call.argumentsJson).jsonObject
                     add(buildJsonObject {
-                        put("stepId", "needle3-${index + 1}")
+                        put("stepId", "qwen3-${index + 1}")
                         put("order", index + 1)
-                        put("description", "Needle 3 selected ${call.name}")
+                        put("description", "Qwen 3 selected ${call.name}")
                         put("action", call.name)
                         putJsonObject("params") {
                             args.entries.forEach { (key, value) ->
@@ -175,5 +173,11 @@ class Needle3LocalProvider @Inject constructor(
                 }
             }
         }.toString()
+    }
+
+    private companion object {
+        const val QWEN_MODEL_ID = "qwen3-0.6b-q4_k_m"
+        const val CHAT_PROMPT = "You are USMAN AND UMAR, a friendly local Android assistant. Answer ordinary chat in natural language only. Never output JSON or tool-call syntax in chat mode. Do not claim device actions were performed."
+        const val PLAN_PROMPT = "You are USMAN AND UMAR, a local Android assistant. For explicit actions, select only from the registered actions below. Never call tools for greetings or ordinary questions. The app validates, approves, and executes every action; never claim completion."
     }
 }

@@ -1,5 +1,6 @@
 *.iml
 .gradle
+/.kotlin
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -14,6 +15,10 @@
 .cxx
 local.properties
 /app/build
+/llama/build
+
+# Large Qwen GGUF is checksum-pinned and staged by app/build.gradle.
+/app/src/main/assets/models/*.gguf
 
 # Signing credentials — never commit to public repos
 *.keystore

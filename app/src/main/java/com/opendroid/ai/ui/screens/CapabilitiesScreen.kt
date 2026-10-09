@@ -74,14 +74,14 @@ fun CapabilitiesScreen(
             onClick = onTermux
         )
         CapabilityCard(
-            title = "NEEDLE 3 LOCAL",
-            description = "Load Needle 3 on-device and run structured tool calls without Gemini or a cloud API.",
+            title = "QWEN 3 LOCAL",
+            description = "Load Qwen 3 on-device with llama.cpp and run structured tool calls without a cloud API.",
             icon = Icons.Default.Extension,
             onClick = onNeedle3
         )
         CapabilityCard(
             title = "UNIVERSAL LOCAL AGENT",
-            description = "Orchestrate MCP, REST, OAuth, CLI, webhook, developer, cloud, and hosting connectors with Needle 3.",
+            description = "Orchestrate MCP, REST, OAuth, CLI, webhook, developer, cloud, and hosting connectors with Qwen 3.",
             icon = Icons.Default.Extension,
             onClick = onUniversalAgent
         )

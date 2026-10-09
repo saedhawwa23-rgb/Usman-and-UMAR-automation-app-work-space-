@@ -36,9 +36,9 @@ fun Needle3Screen(viewModel: Needle3ViewModel = hiltViewModel()) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("NEEDLE 3 LOCAL", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("QWEN 3 LOCAL", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Text(
-            "On-device structured tool calling. No Gemini, cloud model, or API key is used.",
+            "On-device Qwen 3 tool calling via llama.cpp. No Gemini, cloud model, or API key is used.",
             color = AppTheme.colors.textSecondary,
             fontSize = 13.sp
         )
@@ -50,22 +50,22 @@ fun Needle3Screen(viewModel: Needle3ViewModel = hiltViewModel()) {
                 Text("Status: ${currentStatus.label()}", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
                 when (currentStatus) {
                     Needle3Status.NotInstalled -> Text(
-                        "The verified Needle 3 model is bundled with this app and will be installed into private app storage.",
+                        "The verified Qwen 3 model is bundled with this app and will be installed into private app storage.",
                         color = AppTheme.colors.textSecondary
                     )
-                    Needle3Status.Loading -> Text("Preparing the bundled Needle 3 model…", color = AppTheme.colors.textSecondary)
+                    Needle3Status.Loading -> Text("Preparing the bundled Qwen 3 model…", color = AppTheme.colors.textSecondary)
                     is Needle3Status.Downloading -> {
                         val progress = (currentStatus.bytesCopied.toFloat() / Needle3LocalRuntime.MODEL_SIZE).coerceIn(0f, 1f)
                         Text(
-                            "Installing bundled model: ${currentStatus.bytesCopied / 1_000_000} / 35.3 MB",
+                            "Installing bundled Qwen 3 model: ${currentStatus.bytesCopied / 1_000_000} / 484.2 MB",
                             color = AppTheme.colors.textSecondary
                         )
                         LinearProgressIndicator(progress = progress, modifier = Modifier.fillMaxWidth())
                     }
                     Needle3Status.Verifying -> Text("Verifying model size and SHA-256…", color = AppTheme.colors.textSecondary)
-                    Needle3Status.Initializing -> Text("Initializing ARM native runtime and tool schema…", color = AppTheme.colors.textSecondary)
+                    Needle3Status.Initializing -> Text("Initializing llama.cpp ARM runtime…", color = AppTheme.colors.textSecondary)
                     Needle3Status.Ready -> {
-                        Text("Model loaded and ready for local action selection.", color = AppTheme.colors.textSecondary)
+                        Text("Qwen 3 model loaded and ready for local action selection.", color = AppTheme.colors.textSecondary)
                         Button(onClick = viewModel::runDiagnostic) { Text("RUN LOCAL TOOL DIAGNOSTIC") }
                     }
                     is Needle3Status.Error -> Text(currentStatus.message, color = AppTheme.colors.textSecondary)
@@ -89,7 +89,7 @@ fun Needle3Screen(viewModel: Needle3ViewModel = hiltViewModel()) {
             Text(it, color = AppTheme.colors.accentCyan, fontSize = 13.sp)
         }
         Text(
-            "Safety: Needle 3 only selects schemas already registered by USMAN AND UMAR. The existing approval policy and ActionDispatcher remain authoritative before device actions run.",
+            "Safety: Qwen 3 only selects schemas already registered by USMAN AND UMAR. The existing approval policy and ActionDispatcher remain authoritative before device actions run.",
             color = AppTheme.colors.textSecondary,
             fontSize = 12.sp
         )

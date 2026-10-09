@@ -15,7 +15,7 @@ import java.util.Locale
 import kotlin.math.roundToLong
 
 sealed class LLMError(val code: String) {
-    data object Needle3NotReady : LLMError("NEEDLE3_NOT_READY")
+    data object Needle3NotReady : LLMError("QWEN3_NOT_READY")
     data object AuthMissing : LLMError("AUTH_MISSING")
     data object AuthInvalid : LLMError("AUTH_INVALID")
     data object QuotaExhausted : LLMError("QUOTA_EXHAUSTED")
@@ -191,8 +191,8 @@ object LLMErrorMapper {
             safeMessage.contains("API Key", ignoreCase = true) &&
             (safeMessage.contains("not set", ignoreCase = true) ||
                 safeMessage.contains("not configured", ignoreCase = true))
-        val isNeedle3NotReady = ProviderCatalog.canonicalName(provider) == ProviderCatalog.NEEDLE3_LOCAL &&
-            safeMessage.contains("Needle 3", ignoreCase = true)
+        val isNeedle3NotReady = ProviderCatalog.canonicalName(provider) == ProviderCatalog.QWEN3_LOCAL &&
+            safeMessage.contains("Qwen 3", ignoreCase = true)
         val isNetwork = throwable is SocketTimeoutException ||
             throwable is ConnectException ||
             throwable is UnknownHostException ||

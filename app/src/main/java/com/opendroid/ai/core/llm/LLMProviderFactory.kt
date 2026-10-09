@@ -77,7 +77,7 @@ class LLMProviderFactory @Inject constructor(
             "LiteRT-LM (On-device)" -> liteRTLMProvider.get()
             ProviderCatalog.NEEDLE3_LOCAL -> needle3LocalProvider.get()
             else -> {
-                Log.w(TAG, "Unknown LLM provider persisted; selecting Needle 3 Local.")
+                Log.w(TAG, "Unknown LLM provider persisted; selecting Qwen 3 Local.")
                 needle3LocalProvider.get()
             }
         }
@@ -90,7 +90,7 @@ class LLMProviderFactory @Inject constructor(
 
     suspend fun getActiveProvider(): LLMProvider {
         // Legacy installations may persist Google Gemini, but autonomous agent
-        // execution must never request a cloud API key. Needle 3 is authoritative.
+        // execution must never request a cloud API key. Qwen 3 is authoritative.
         return getProviderByName(ProviderCatalog.NEEDLE3_LOCAL)
     }
 

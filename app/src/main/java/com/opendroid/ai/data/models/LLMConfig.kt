@@ -18,10 +18,10 @@ private fun warnCoercion() = runCatching {
 @Serializable
 data class LLMConfig(
     /** The local agent is the only provider used for autonomous execution. */
-    val activeProvider: String = ProviderCatalog.NEEDLE3_LOCAL,
+    val activeProvider: String = ProviderCatalog.QWEN3_LOCAL,
     // Read from the catalog rather than repeated here, so one seed cannot drift
     // from the other. It is replaced by the provider's live list on first fetch.
-    val activeModel: String = ProviderCatalog.defaultModel(ProviderCatalog.NEEDLE3_LOCAL),
+    val activeModel: String = ProviderCatalog.defaultModel(ProviderCatalog.QWEN3_LOCAL),
     /**
      * Provider/model pairs. `null` means the setting predates this field and is
      * resolved lazily from [activeProvider]/[activeModel] without an upgrade
@@ -109,9 +109,12 @@ fun LLMConfig.selectedModelFor(providerName: String): String {
     val legacySelection = activeModel.takeIf {
         ProviderCatalog.canonicalName(activeProvider) == provider && it.isNotBlank()
     }
-    val selected = migratedPairs?.get(provider)?.takeIf(String::isNotBlank)
+    val rawSelected = migratedPairs?.get(provider)?.takeIf(String::isNotBlank)
         ?: (if (selectedModels == null) legacySelection else null)
         ?: ProviderCatalog.defaultModel(provider)
+    val selected = if (provider == ProviderCatalog.QWEN3_LOCAL && rawSelected.equals("needle3", ignoreCase = true)) {
+        ProviderCatalog.defaultModel(provider)
+    } else rawSelected
 
     return if (provider == "Anthropic Claude") {
         resolveClaudeModelId(selected)
