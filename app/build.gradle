@@ -19,8 +19,8 @@ android {
         applicationId "com.usmanandumar.app"
         minSdk 28
         targetSdk 34
-        versionCode 20
-        versionName "2.0.0-qwen3"
+        versionCode 22
+        versionName "2.0.2-qwen3"
         ndk {
             // Keep ARMv7 distribution compatibility and add ARM64 for Qwen 3.
             // CI's hosted x86_64 emulators use this explicit test-only override.
