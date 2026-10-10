@@ -82,32 +82,21 @@ class UniversalLocalAgent @Inject constructor(
             Needle3Status.NotInstalled -> {
                 return UniversalAgentResult(
                     completed = false,
-                    events = events + UniversalAgentEvent(
-                        "error",
-                        "Please download the Qwen 3 model and place it in /sdcard/Download/"
-                    )
-                )
-            }
-            Needle3Status.PermissionRequired -> {
-                return UniversalAgentResult(
-                    completed = false,
-                    events = events + UniversalAgentEvent(
-                        "error",
-                        "Allow file access to read /sdcard/Download/qwen3.gguf"
-                    )
+                    events = events + UniversalAgentEvent("error", "Qwen 3 is not ready: official model installation did not complete")
                 )
             }
             Needle3Status.Loading -> {
                 return UniversalAgentResult(
                     completed = false,
-                    events = events + UniversalAgentEvent("error", "Qwen 3 is checking the external model")
+                    events = events + UniversalAgentEvent("error", "Qwen 3 is not ready: model is still loading")
                 )
             }
+            is Needle3Status.Downloading,
             Needle3Status.Verifying,
             Needle3Status.Initializing -> {
                 return UniversalAgentResult(
                     completed = false,
-                    events = events + UniversalAgentEvent("error", "Qwen 3 is verifying or loading the external model")
+                    events = events + UniversalAgentEvent("error", "Qwen 3 is not ready: model installation is still in progress")
                 )
             }
         }
