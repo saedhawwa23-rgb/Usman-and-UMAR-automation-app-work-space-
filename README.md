@@ -1,44 +1,44 @@
 # USMAN AND UMAR
 
-USMAN AND UMAR is an Android-native accessibility assistant based on the official [OpenDroid](https://github.com/yashab-cyber/opendroid) project. This repository contains the imported OpenDroid foundation and the v1.0.2 device/build configuration for USMAN AND UMAR.
+USMAN AND UMAR is an Android automation assistant built on the OpenDroid codebase. This branch moves reasoning to cloud LLM providers, with OpenRouter as the default, while keeping device actions explicit and separately permissioned.
 
-## Runtime scope
+## Runtime architecture
 
-The app runs natively on Android and uses Android Accessibility Services for screen reading, UI navigation, and automation. It does not package or launch Linux virtual machines, PRoot, Node.js, Python, Ubuntu, QEMU, or other desktop/server runtime environments. Android-native inference components, where enabled, remain ordinary Android libraries and do not virtualize another operating system. The application does not request a large heap and is configured for devices with approximately 2.7 GB RAM.
+- **Cloud reasoning:** OpenRouter is selected for new installations. Other configured providers are available from Settings. Provider credentials are stored through the app's protected credential store; requests require a configured provider and, where applicable, an API key.
+- **Tool execution:** The cloud model can request registered tools through the OpenAI-compatible tool-calling protocol. The app validates and dispatches each tool locally; Android actions remain subject to their existing grants and approval rules.
+- **GitHub discovery:** Public repository search and inspection use GitHub's REST API. The app can save a repository as supported project context, make it active, inspect metadata/README/root entries, and start a real `git clone` through the Termux `RUN_COMMAND` API.
+- **Termux commands:** Commands execute in the installed Termux environment, not in a simulated shell. Termux must allow external app commands, and the app must have Termux's `RUN_COMMAND` permission. Command output and exit status are returned through the callback contract.
+- **No bundled local inference:** The app no longer packages a GGUF model, llama.cpp module, or LiteRT local inference engine. Termux remains an optional user-authorized execution backend; it is not an AI reasoning engine.
 
-## Device and build requirements
+GitHub and Termux capabilities require connectivity or an installed/configured Termux app as appropriate. GitHub public endpoints can be rate-limited. Tool availability and successful model tool-calling vary by provider/model.
+
+## Android and build requirements
 
 | Setting | Value |
 |---|---|
 | Minimum Android SDK | 28 (Android 9) |
 | Target Android SDK | 34 (Android 14) |
-| Release version | 1.0.2, versionCode 3 |
-| Native ABI | `armeabi-v7a`, `arm64-v8a` |
-| APK packaging | Universal ARM APK |
-| Primary control channel | Android Accessibility Service |
+| Current app version | `3.0.0-cloud-ai` (versionCode 23) |
+| Packaging | Android application; no model asset or inference JNI module |
 
-Official Samsung target profiles and the physical-device validation matrix are documented in [Supported devices](docs/SUPPORTED_DEVICES.md). Galaxy M10 devices must be updated to Android 9 or later because the current `minSdk` is API 28; the original Android 8.1/API 27 firmware is outside this release's install range.
-
-## Build
-
-Install JDK 21 and the Android SDK with the required platform/build-tools packages, then run:
+Build with JDK 21 and the Android SDK installed:
 
 ```bash
+./gradlew :app:testDebugUnitTest
+./gradlew assembleDebug
 ./gradlew assembleRelease -PallowUnsignedRelease=true
 ```
 
-The unsigned validation APK is written to `app/build/outputs/apk/release/app-release-unsigned.apk`. A distributable release build requires a release keystore configured through Gradle properties; credentials must never be committed to this repository.
+The opt-in unsigned release is for validation only and is not installable as a distributable signed release. A distributable release requires a release keystore and passwords supplied through private Gradle properties or environment variables. Never commit signing material.
 
-For a quick compile check:
+## Device setup
 
-```bash
-./gradlew assembleDebug
-```
+After installation, configure an LLM provider and its API key in Settings. To use command execution or repository cloning, install Termux, allow external app commands in Termux, and grant the app the Termux `RUN_COMMAND` permission. Android permission prompts and high-impact plan approvals remain in force.
 
-## Accessibility setup
+## Verification status
 
-After installation, open Android Settings, enable the **USMAN AND UMAR** Accessibility Service, and grant only the permissions needed for the features you choose to use. Accessibility is the app's native UI automation mechanism.
+Build and unit-test results are recorded in the pull request. Physical-device execution of the full GitHub → Termux clone → file inspection workflow is **UNVERIFIED — REQUIRES DEVICE** until exercised on a supported Android device with Termux installed and authorized.
 
 ## Project provenance and license
 
-The Android code was imported from the official OpenDroid repository and adapted for this project. The upstream Apache License 2.0 notices are retained in [LICENSE](LICENSE). Project-specific release notes are in [docs/USMAN_AND_UMAR_RELEASE.md](docs/USMAN_AND_UMAR_RELEASE.md).
+The Android foundation is based on the upstream [OpenDroid project](https://github.com/yashab-cyber/opendroid). Apache License 2.0 notices are retained in [LICENSE](LICENSE). Project notes are in [`docs/`](docs/).

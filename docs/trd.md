@@ -1,5 +1,6 @@
-# Technical Requirement Document (TRD) - OpenDroid
+# Archived upstream TRD — not the current USMAN AND UMAR build specification
 
+> Historical source-project specification. It describes an earlier OpenDroid release; do not use it as a current feature, dependency, SDK, or device-validation statement. See [architecture.md](architecture.md) for the current cloud-first design.
 ## Document Control
 * **Document Version:** v1.2.0
 * **Last Updated:** August 20, 2026

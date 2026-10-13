@@ -52,7 +52,6 @@ import com.opendroid.ai.core.agent.ChatErrorUiState
 import com.opendroid.ai.core.agent.guidance
 import com.opendroid.ai.core.agent.primaryAction
 import com.opendroid.ai.core.agent.title
-import com.opendroid.ai.core.llm.ProviderCatalog
 import com.opendroid.ai.core.voice.SpeechRecognitionEngine
 import com.opendroid.ai.data.models.AutoMode
 import com.opendroid.ai.data.models.ChatMessage
@@ -89,7 +88,6 @@ fun ChatScreen(
     val runningSessionId by viewModel.runningSessionId.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val llmConfig by viewModel.llmConfig.collectAsState()
-    val usingNeedle3 = ProviderCatalog.canonicalName(llmConfig.activeProvider) == ProviderCatalog.NEEDLE3_LOCAL
     val currentSessionId = sessions.firstOrNull { it.isCurrent }?.id
     val runningElsewhere = runningSessionId != null && runningSessionId != currentSessionId
 
@@ -207,7 +205,7 @@ fun ChatScreen(
                             fontSize = 20.sp,
                             letterSpacing = 2.sp
                         )
-                        AgentStatusSubtitle(visibleAgentState, runningElsewhere, usingNeedle3)
+                        AgentStatusSubtitle(visibleAgentState, runningElsewhere)
                     }
                 },
                 actions = {
@@ -384,7 +382,7 @@ fun ChatScreen(
                     // visibleAgentState.
                     if (visibleAgentState is AgentState.Thinking) {
                         item {
-                            ThinkingBubble(if (usingNeedle3) "Qwen 3 is thinking..." else "Thinking...")
+                            ThinkingBubble("${llmConfig.activeProvider} is thinking…")
                         }
                     }
 
@@ -681,8 +679,7 @@ fun ChatScreen(
 @Composable
 fun AgentStatusSubtitle(
     state: AgentState,
-    runningElsewhere: Boolean = false,
-    needle3Active: Boolean = false
+    runningElsewhere: Boolean = false
 ) {
     // runningElsewhere means [state] has already been forced to Idle because the real
     // activity belongs to a different chat (see ChatViewModel.visibleAgentState) - say
@@ -694,7 +691,7 @@ fun AgentStatusSubtitle(
         when (state) {
             is AgentState.Idle -> "Online & Ready"
             is AgentState.Listening -> "Listening to voice input..."
-            is AgentState.Thinking -> if (needle3Active) "Qwen 3 is thinking..." else "Analyzing intent & planning..."
+            is AgentState.Thinking -> "Analyzing intent & planning..."
             is AgentState.PlanProposed -> "Requires Plan Approval"
             is AgentState.ExecutingPlan -> "Executing: ${state.currentStepDesc}"
             is AgentState.Speaking -> "Speaking: ${state.text.take(30)}..."
@@ -806,12 +803,7 @@ fun ChatBubble(
                     .padding(14.dp)
             ) {
                 if (isAgent && message.modelBadge != null) {
-                    val displayName = when (message.modelBadge) {
-                        "Gemma 4 (On-device)" -> "ON-DEVICE (AI CORE)"
-                        "On-Device AI" -> "ON-DEVICE AI"
-                        "LiteRT-LM (On-device)" -> "ON-DEVICE (LITERT)"
-                        else -> message.modelBadge.uppercase(Locale.getDefault())
-                    }
+                    val displayName = message.modelBadge.uppercase(Locale.getDefault())
                     Text(
                         text = displayName,
                         fontSize = 9.sp,

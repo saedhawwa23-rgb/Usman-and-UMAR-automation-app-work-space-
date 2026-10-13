@@ -5,14 +5,15 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 /**
- * Read-only local tools used to prove that Qwen 3 can discover and execute
- * the universal registry without any cloud credential or network request.
+ * Read-only tools for inspecting the app's locally registered connectors.
+ * These tools execute on-device, but are selected by the configured provider
+ * through the normal cloud tool-calling loop.
  */
 class LocalRegistryConnector(
     private val registry: UniversalToolRegistry
 ) : UniversalConnector {
     override val id: String = "local_registry"
-    override val displayName: String = "Local Tool Registry"
+    override val displayName: String = "Registered Tool Catalog"
     override val kind: ConnectorKind = ConnectorKind.CLI
 
     override fun tools(): List<ConnectorTool> = listOf(
@@ -38,7 +39,7 @@ class LocalRegistryConnector(
     ): ConnectorResult {
         val payload = when (invocation.tool.name) {
             "list_available_tools" -> buildJsonObject {
-                put("source", "Qwen 3 (Local)")
+                put("source", "USMAN AND UMAR tool registry")
                 putJsonArray("tools") {
                     registry.allTools()
                         .filterNot { it.connectorId == id }
@@ -53,7 +54,7 @@ class LocalRegistryConnector(
                 }
             }
             "list_connectors" -> buildJsonObject {
-                put("source", "Qwen 3 (Local)")
+                put("source", "USMAN AND UMAR tool registry")
                 putJsonArray("connectors") {
                     registry.all().forEach { connector ->
                         add(buildJsonObject {
@@ -65,7 +66,7 @@ class LocalRegistryConnector(
                     }
                 }
             }
-            else -> return ConnectorResult(false, error = "Local registry tool is not allowlisted")
+            else -> return ConnectorResult(false, error = "Registry introspection tool is not allowlisted")
         }
         return ConnectorResult(success = true, output = payload.toString())
     }

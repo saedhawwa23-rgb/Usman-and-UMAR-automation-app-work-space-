@@ -5,6 +5,10 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -167,12 +171,26 @@ class HttpConnector(
     private val staticHeaders: Map<String, String> = emptyMap()
 ) : UniversalConnector {
     override fun tools(): List<ConnectorTool> = definitions
+    private val gson = Gson()
 
     override suspend fun execute(invocation: ConnectorInvocation, credentials: ConnectorCredentialResolver): ConnectorResult =
         withContext(Dispatchers.IO) {
             credentials.withSecret(invocation.credential) { secret ->
-                val path = pathByTool[invocation.tool.name] ?: "/"
-                val connection = (URL(baseUrl.trimEnd('/') + "/" + path.trimStart('/')).openConnection() as HttpURLConnection).apply {
+                val pathTemplate = pathByTool[invocation.tool.name] ?: "/"
+                val args = runCatching { gson.fromJson(invocation.argumentsJson, JsonObject::class.java) }.getOrNull()
+                    ?: return@withSecret ConnectorResult(false, error = "Tool arguments were not a JSON object")
+                val missingPathArgument = Regex("\\{([A-Za-z0-9_]+)}").findAll(pathTemplate)
+                    .map { it.groupValues[1] }.firstOrNull { args.get(it)?.asString.isNullOrBlank() }
+                if (missingPathArgument != null) {
+                    return@withSecret ConnectorResult(false, error = "Required path argument is missing: $missingPathArgument")
+                }
+                val path = Regex("\\{([A-Za-z0-9_]+)}").replace(pathTemplate) { match ->
+                    val value = args.get(match.groupValues[1]).asString
+                    require(value.length <= 200 && value.none { it.isISOControl() }) { "Path parameter is invalid" }
+                    URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
+                }
+                val requestUrl = baseUrl.trimEnd('/') + "/" + path.trimStart('/')
+                val connection = (URL(requestUrl).openConnection() as HttpURLConnection).apply {
                     requestMethod = methodByTool[invocation.tool.name] ?: "POST"
                     connectTimeout = 20_000
                     readTimeout = 60_000

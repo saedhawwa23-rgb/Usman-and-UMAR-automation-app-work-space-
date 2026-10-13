@@ -13,12 +13,13 @@ object ProviderCatalog {
         val canonicalName: String = displayName
     )
 
-    const val ON_DEVICE = "On-Device AI"
-    const val LEGACY_ON_DEVICE = "Gemma 4 (On-device)"
-    const val QWEN3_LOCAL = "Qwen 3 (Local)"
-    /** Source-compatibility alias; persisted Needle selections normalize below. */
-    const val NEEDLE3_LOCAL = QWEN3_LOCAL
-    const val LEGACY_NEEDLE3_LOCAL = "Needle 3 (Local)"
+    private val retiredLocalProviders = setOf(
+        "On-Device AI",
+        "Gemma 4 (On-device)",
+        "LiteRT-LM (On-device)",
+        "Qwen 3 (Local)",
+        "Needle 3 (Local)"
+    )
 
     /**
      * The model a provider starts on before its live list has been fetched.
@@ -42,12 +43,6 @@ object ProviderCatalog {
         ProviderSpec("Copilot API", "gpt-4o"),
         ProviderSpec("Custom OpenAI Compatible", "custom-model"),
         ProviderSpec("Ollama", "llama3"),
-        ProviderSpec(ON_DEVICE, "gemma-4-on-device"),
-        ProviderSpec("LiteRT-LM (On-device)", "gemma3-1b-it"),
-        ProviderSpec(QWEN3_LOCAL, "qwen3-0.6b-q4_k_m"),
-        // Compatibility entry for the directly addressable AI Core backend.
-        // Its persisted key is normalized to the unified on-device provider.
-        ProviderSpec(LEGACY_ON_DEVICE, "gemma-4-on-device", ON_DEVICE)
     )
 
     private val byExternalName = providers.associateBy { it.displayName }
@@ -55,9 +50,12 @@ object ProviderCatalog {
 
     fun canonicalName(providerName: String): String {
         val normalized = providerName.trim()
-        if (normalized.equals(LEGACY_NEEDLE3_LOCAL, ignoreCase = true)) return QWEN3_LOCAL
         return byExternalName[normalized]?.canonicalName ?: normalized
     }
+
+    /** Used only to migrate stale persisted selections to the default cloud provider. */
+    fun isRetiredLocalProvider(providerName: String): Boolean =
+        retiredLocalProviders.any { it.equals(providerName.trim(), ignoreCase = true) }
 
     fun isKnown(providerName: String): Boolean {
         val normalized = canonicalName(providerName)
@@ -91,8 +89,4 @@ object ProviderCatalog {
         }
     }
 
-    fun isOnDevice(providerName: String): Boolean = when (canonicalName(providerName)) {
-        ON_DEVICE, "LiteRT-LM (On-device)", QWEN3_LOCAL -> true
-        else -> false
-    }
 }

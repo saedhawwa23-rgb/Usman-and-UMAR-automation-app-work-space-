@@ -161,7 +161,7 @@ class XAdapter @Inject constructor(
                         platform = SocialPlatform.X,
                         authorName = "Marcus Tech",
                         authorAvatarUrl = null,
-                        content = "Is the LiteRT on-device inference fully offline?",
+                        content = "How does USMAN AND UMAR use cloud AI for automation?",
                         timestamp = System.currentTimeMillis() - 2500_000,
                         sentiment = Sentiment.NEUTRAL,
                         category = InteractionCategory.QUESTION,

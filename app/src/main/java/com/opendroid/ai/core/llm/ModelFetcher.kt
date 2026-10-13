@@ -1,7 +1,6 @@
 package com.opendroid.ai.core.llm
 
 import android.util.Log
-import com.opendroid.ai.core.llm.OnDeviceModelRegistry
 import com.opendroid.ai.core.util.UrlUtils
 import com.opendroid.ai.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +60,21 @@ class ModelFetcher @Inject constructor(
         val apiKey = config.apiKeys[provider]?.takeIf { it.isNotBlank() }
 
         try {
+            if (ProviderCatalog.isDynamic(provider)) {
+                val dynamic = config.dynamicAIProviders.firstOrNull { it.id == provider }
+                    ?: return@withContext ModelFetchOutcome.NeedsCredentials(
+                        "Add the provider endpoint before discovering its models."
+                    )
+                val endpoint = UrlUtils.formatBaseUrl(dynamic.endpoint, "")
+                if (endpoint.isBlank()) {
+                    return@withContext ModelFetchOutcome.NeedsCredentials(
+                        "Set the provider endpoint URL before discovering its models."
+                    )
+                }
+                return@withContext ModelFetchOutcome.Success(
+                    openAiStyle(modelsUrl(endpoint), apiKey, provider)
+                )
+            }
             when (ProviderCatalog.canonicalName(provider)) {
                 "Anthropic Claude" -> {
                     apiKey ?: return@withContext needsKey(provider)
@@ -162,22 +176,6 @@ class ModelFetcher @Inject constructor(
                     }
                     val baseUrl = UrlUtils.formatBaseUrl(customUrl, "")
                     ModelFetchOutcome.Success(openAiStyle(modelsUrl(baseUrl), apiKey, provider))
-                }
-
-                ProviderCatalog.ON_DEVICE -> {
-                    // On-device models ship with the app, so the registry — not a
-                    // remote endpoint — is their authoritative list.
-                    ModelFetchOutcome.Success(
-                        OnDeviceModelRegistry.allModels.map { spec ->
-                            AIModel(
-                                id = spec.id,
-                                displayName = spec.displayName,
-                                provider = provider,
-                                isFree = true,
-                                isRecommended = spec.isRecommended
-                            )
-                        }
-                    )
                 }
 
                 else -> ModelFetchOutcome.Success(emptyList())

@@ -15,7 +15,6 @@ import java.util.Locale
 import kotlin.math.roundToLong
 
 sealed class LLMError(val code: String) {
-    data object Needle3NotReady : LLMError("QWEN3_NOT_READY")
     data object AuthMissing : LLMError("AUTH_MISSING")
     data object AuthInvalid : LLMError("AUTH_INVALID")
     data object QuotaExhausted : LLMError("QUOTA_EXHAUSTED")
@@ -49,14 +48,6 @@ class RedactedDetail private constructor(
                 vendorCode = detail.vendorCode
             )
 
-        internal fun fromLocalRuntime(message: String): RedactedDetail =
-            RedactedDetail(
-                vendorType = "local_runtime",
-                vendorCode = message
-                    .replace(Regex("[^A-Za-z0-9_:. -]"), "")
-                    .take(160)
-                    .ifBlank { "runtime_failure" }
-            )
     }
 }
 
@@ -191,8 +182,6 @@ object LLMErrorMapper {
             safeMessage.contains("API Key", ignoreCase = true) &&
             (safeMessage.contains("not set", ignoreCase = true) ||
                 safeMessage.contains("not configured", ignoreCase = true))
-        val isNeedle3NotReady = ProviderCatalog.canonicalName(provider) == ProviderCatalog.QWEN3_LOCAL &&
-            safeMessage.contains("Qwen 3", ignoreCase = true)
         val isNetwork = throwable is SocketTimeoutException ||
             throwable is ConnectException ||
             throwable is UnknownHostException ||
@@ -203,7 +192,6 @@ object LLMErrorMapper {
             throwable is UnknownHostException
 
         val error = when {
-            isNeedle3NotReady -> LLMError.Needle3NotReady
             isMalformed -> LLMError.MalformedResponse
             isAuthMissing -> LLMError.AuthMissing
             isNetwork -> LLMError.Network
@@ -214,7 +202,7 @@ object LLMErrorMapper {
             provider = provider,
             model = model,
             retryable = error == LLMError.Network && isConnectFailure,
-            detail = if (isNeedle3NotReady) RedactedDetail.fromLocalRuntime(safeMessage) else null
+            detail = null
         )
     }
 

@@ -13,7 +13,7 @@ class ProviderSelectionPolicyTest {
         assertEquals(
             listOf("OpenAI", "Ollama"),
             ProviderSelectionPolicy.explicitFallbacks(
-                activeProvider = "On-Device AI",
+                activeProvider = "OpenRouter",
                 configuredFallbacks = listOf("OpenAI", "OpenAI", "unknown", "Ollama"),
                 risk = ActionRisk.READ_ONLY
             )
@@ -25,7 +25,7 @@ class ProviderSelectionPolicyTest {
         assertEquals(
             emptyList<String>(),
             ProviderSelectionPolicy.explicitFallbacks(
-                activeProvider = "On-Device AI",
+                activeProvider = "OpenRouter",
                 configuredFallbacks = listOf("OpenAI"),
                 risk = ActionRisk.IRREVERSIBLE
             )
@@ -33,16 +33,8 @@ class ProviderSelectionPolicyTest {
     }
 
     @Test
-    fun `only malformed output can escalate and local exhaustion is explicit`() {
+    fun `only malformed output can escalate`() {
         assertTrue(ProviderSelectionPolicy.shouldEscalateMalformed(LLMError.MalformedResponse, true))
         assertFalse(ProviderSelectionPolicy.shouldEscalateMalformed(LLMError.Network, true))
-        assertEquals(
-            LLMError.SafeFallbackUnavailable,
-            ProviderSelectionPolicy.terminalError("On-Device AI", 1)
-        )
-        assertEquals(
-            LLMError.MalformedResponse,
-            ProviderSelectionPolicy.terminalError("OpenAI", 1)
-        )
     }
 }

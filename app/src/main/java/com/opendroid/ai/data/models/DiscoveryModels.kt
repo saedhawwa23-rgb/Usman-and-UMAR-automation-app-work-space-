@@ -22,7 +22,13 @@ data class GitHubProject(
     val cloneUrl: String = "",
     val language: String? = null,
     val stars: Int = 0,
-    val topics: List<String> = emptyList()
+    val topics: List<String> = emptyList(),
+    val defaultBranch: String = "",
+    val forks: Int = 0,
+    val openIssues: Int = 0,
+    val updatedAt: String = "",
+    val readme: String = "",
+    val rootFiles: List<String> = emptyList()
 )
 
 @Serializable

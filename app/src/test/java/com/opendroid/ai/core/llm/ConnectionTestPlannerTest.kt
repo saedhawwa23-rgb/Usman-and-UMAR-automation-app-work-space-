@@ -43,18 +43,13 @@ class ConnectionTestPlannerTest {
     }
 
     @Test
-    fun `cloud providers derive from the catalog and exclude on-device entries`() {
+    fun `providers derive from the supported provider catalog`() {
         val cloud = ConnectionTestPlanner.cloudProviders()
-        val expected = ProviderCatalog.providers
-            .filter { spec -> spec.canonicalName != ProviderCatalog.ON_DEVICE }
-            .filter { spec -> spec.canonicalName != "LiteRT-LM (On-device)" }
-            .map { spec -> spec.displayName }
+        val expected = ProviderCatalog.providers.map { spec -> spec.displayName }
 
         assertEquals(expected, cloud)
         assertTrue(cloud.contains("Ollama"))
-        assertTrue(!cloud.contains(ProviderCatalog.ON_DEVICE))
-        assertTrue(!cloud.contains(ProviderCatalog.LEGACY_ON_DEVICE))
-        assertTrue(!cloud.contains("LiteRT-LM (On-device)"))
+        assertTrue(cloud.none(ProviderCatalog::isRetiredLocalProvider))
     }
 
     @Test

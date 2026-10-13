@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Avoids OpenDroidApp because graph navigation does not need Hilt or the Android Keystore. */
 class NavigationTestApplication : Application()
@@ -28,7 +29,8 @@ class NavigationTestApplication : Application()
  * not the screen content.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], application = NavigationTestApplication::class)
+@Config(sdk = [34], application = NavigationTestApplication::class)
+@GraphicsMode(GraphicsMode.Mode.LEGACY)
 class OpenDroidNavigationBackStackTest {
 
     /** A controller with the Compose navigator registered but no graph attached yet. */

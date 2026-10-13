@@ -18,7 +18,6 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 import com.opendroid.ai.data.db.dao.CrashLogDao
-import com.opendroid.ai.data.db.dao.ModelDao
 import com.opendroid.ai.data.db.dao.UnknownActionDao
 import com.opendroid.ai.data.db.dao.HabitDao
 import com.opendroid.ai.data.crash.CrashLogRepository
@@ -44,7 +43,8 @@ object DatabaseModule {
             OpenDroidDatabase.MIGRATION_5_6,
             OpenDroidDatabase.MIGRATION_6_7,
             OpenDroidDatabase.MIGRATION_7_8,
-            OpenDroidDatabase.MIGRATION_8_9
+            OpenDroidDatabase.MIGRATION_8_9,
+            OpenDroidDatabase.MIGRATION_9_10
         )
         .build()
     }
@@ -80,10 +80,6 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideNotificationDao(db: OpenDroidDatabase): NotificationDao = db.notificationDao()
-
-    @Provides
-    @Singleton
-    fun provideModelDao(db: OpenDroidDatabase): ModelDao = db.modelDao()
 
     @Provides
     @Singleton

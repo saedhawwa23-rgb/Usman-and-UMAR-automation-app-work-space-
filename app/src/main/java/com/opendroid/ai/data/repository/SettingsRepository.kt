@@ -320,15 +320,11 @@ class SettingsRepository internal constructor(
                 LLMConfig()
             }
         } else LLMConfig()
-        val provider = ProviderCatalog.canonicalName(decoded.activeProvider)
-        val activeModel = if (provider == ProviderCatalog.QWEN3_LOCAL &&
-            decoded.activeModel.equals("needle3", ignoreCase = true)
-        ) ProviderCatalog.defaultModel(provider) else decoded.activeModel
+        val legacyLocalProvider = ProviderCatalog.isRetiredLocalProvider(decoded.activeProvider)
+        val provider = if (legacyLocalProvider) "OpenRouter" else ProviderCatalog.canonicalName(decoded.activeProvider)
+        val activeModel = if (legacyLocalProvider) ProviderCatalog.defaultModel(provider) else decoded.activeModel
         val selectedModels = decoded.selectedModels?.entries?.associate { (key, model) ->
-            val canonical = ProviderCatalog.canonicalName(key)
-            canonical to if (canonical == ProviderCatalog.QWEN3_LOCAL && model.equals("needle3", ignoreCase = true)) {
-                ProviderCatalog.defaultModel(canonical)
-            } else model
+            ProviderCatalog.canonicalName(key) to model
         }
         return decoded.copy(activeProvider = provider, activeModel = activeModel, selectedModels = selectedModels)
     }

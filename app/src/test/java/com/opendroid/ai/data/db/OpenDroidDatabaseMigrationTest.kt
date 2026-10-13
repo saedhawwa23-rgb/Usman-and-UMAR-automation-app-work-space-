@@ -195,6 +195,32 @@ class OpenDroidDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun `migration 9 to 10 drops retired model catalog and preserves user data`() {
+        val db = helper.createDatabase(databasePath, 9)
+        db.execSQL(
+            "INSERT INTO models (id, name, version, size, downloadUrl, localPath, status, downloadProgress, lastUsed, installedAt, downloadedSize, downloadSpeed, etaString) " +
+                "VALUES ('retired-model', 'Retired', '1', 1, '', '', 'READY', 100, 0, 0, 1, '', '')"
+        )
+        db.execSQL(
+            "INSERT INTO memories (`key`, `value`, `type`, `timestamp`, `ttlHours`, `category`) " +
+                "VALUES ('keep-me', 'user-data', 'PREFERENCE', 1234, -1, 'FACT')"
+        )
+
+        val migrated = helper.runMigrationsAndValidate(
+            databasePath, 10, true, OpenDroidDatabase.MIGRATION_9_10
+        )
+
+        migrated.query("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='models'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("SELECT `value` FROM memories WHERE `key`='keep-me'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("user-data", cursor.getString(0))
+        }
+    }
+
     private class V1SchemaCallback : SupportSQLiteOpenHelper.Callback(1) {
         override fun onCreate(db: SupportSQLiteDatabase) {
             V1_CREATE_STATEMENTS.forEach(db::execSQL)

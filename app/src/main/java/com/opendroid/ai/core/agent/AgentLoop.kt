@@ -6,7 +6,6 @@ import com.opendroid.ai.actions.base.ActionResult
 import com.opendroid.ai.core.llm.LLMProviderFactory
 import com.opendroid.ai.core.llm.LLMRequest
 import com.opendroid.ai.core.llm.LLMResponse
-import com.opendroid.ai.core.llm.LatencyBudgetStatus
 import com.opendroid.ai.core.llm.ResponseFormat
 import com.opendroid.ai.core.llm.prompts.PlanningPrompts
 import com.opendroid.ai.core.memory.MemoryManager
@@ -660,8 +659,6 @@ class AgentLoop @Inject constructor(
 
                     val plannerResponse = plannerDeferred.await()
                     val criticResponse = criticDeferred.await()
-                    reportLocalPlanningLatency(plannerResponse)
-                    reportLocalPlanningLatency(criticResponse)
 
                     val mergePrompt = """
                         ${PlanningPrompts.MERGE_SYSTEM_PROMPT}
@@ -687,7 +684,6 @@ class AgentLoop @Inject constructor(
                             responseFormat = ResponseFormat.JSON
                         )
                     )
-                    reportLocalPlanningLatency(mergeResponse)
 
                     parsePlanFromLlmResponse(mergeResponse.content, userMsg.text)
                 }
@@ -701,7 +697,6 @@ class AgentLoop @Inject constructor(
                         responseFormat = ResponseFormat.JSON
                     )
                 )
-                reportLocalPlanningLatency(response)
                 parsePlanFromLlmResponse(response.content, userMsg.text)
             }
 
@@ -729,13 +724,6 @@ class AgentLoop @Inject constructor(
             )
         } catch (e: Exception) {
             fallbackOrError(userMsg, context, e, sessionId)
-        }
-    }
-
-    private suspend fun reportLocalPlanningLatency(response: LLMResponse) {
-        val result = llmProviderFactory.recordPlanningLatency(response)
-        if (result?.status == LatencyBudgetStatus.EXCEEDED && result.message != null) {
-            onSpeakCallback?.invoke(result.message)
         }
     }
 

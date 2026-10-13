@@ -13,7 +13,7 @@ class ProviderCatalogTest {
 
     @Test
     fun `catalog has one default for every stable provider`() {
-        assertEquals(16, ProviderCatalog.providers.size)
+        assertEquals(12, ProviderCatalog.providers.size)
         ProviderCatalog.providers.forEach { provider ->
             assertTrue(provider.displayName, ProviderCatalog.defaultModel(provider.displayName).isNotBlank())
         }
@@ -49,21 +49,11 @@ class ProviderCatalogTest {
     }
 
     @Test
-    fun `legacy on-device name normalizes to one canonical key`() {
-        val config = LLMConfig(activeProvider = "Gemma 4 (On-device)", activeModel = "gemma-3n-multimodal")
-            .withSelectedModel("Gemma 4 (On-device)", "gemma-4-on-device")
-
-        assertEquals("On-Device AI", ProviderCatalog.canonicalName("Gemma 4 (On-device)"))
-        assertEquals("gemma-4-on-device", config.selectedModelFor("On-Device AI"))
-        assertTrue(config.selectedModels?.containsKey("Gemma 4 (On-device)") == false)
-    }
-
-    @Test
-    fun `legacy Needle provider and model normalize to Qwen 3`() {
-        val legacy = LLMConfig(activeProvider = "Needle 3 (Local)", activeModel = "needle3")
-        assertEquals(ProviderCatalog.QWEN3_LOCAL, ProviderCatalog.canonicalName(legacy.activeProvider))
-        assertEquals("qwen3-0.6b-q4_k_m", legacy.selectedModelFor(ProviderCatalog.QWEN3_LOCAL))
-        assertEquals("qwen3-0.6b-q4_k_m", ProviderCatalog.defaultModel(ProviderCatalog.QWEN3_LOCAL))
+    fun `retired local provider names are recognized only for settings migration`() {
+        assertTrue(ProviderCatalog.isRetiredLocalProvider("Gemma 4 (On-device)"))
+        assertTrue(ProviderCatalog.isRetiredLocalProvider("Needle 3 (Local)"))
+        assertTrue(!ProviderCatalog.isKnown("Qwen 3 (Local)"))
+        assertTrue(!ProviderCatalog.isKnown("On-Device AI"))
     }
 
     @Test

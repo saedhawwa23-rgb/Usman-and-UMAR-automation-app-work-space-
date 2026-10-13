@@ -6,8 +6,8 @@ USMAN AND UMAR targets the following Samsung devices and keeps device-specific b
 
 | Device target | Android target | CPU/ABI target | RAM/storage profile | Support status |
 |---|---|---|---|---|
-| Samsung Galaxy A07 4G, 64 GB (`SM-A075F` where applicable) | Android 15/16 | ARMv7 or ARM64 | 4 GB / 64 GB | **Build-compatible; real-device validation required** |
-| Samsung Galaxy M10 (`SM-M105F` / `SM-M105G`) | Android 9/10 update | 64-bit ARM, ARMv7 package path retained | 2–3 GB / 16–32 GB | **Build-compatible after update; real-device validation required** |
+| Samsung Galaxy A07 4G, 64 GB (`SM-A075F` where applicable) | Android 15/16 | ARMv7 or ARM64 | 4 GB / 64 GB | **UNVERIFIED — REQUIRES DEVICE** |
+| Samsung Galaxy M10 (`SM-M105F` / `SM-M105G`) | Android 9/10 update | 64-bit ARM, ARMv7 package path retained | 2–3 GB / 16–32 GB | **UNVERIFIED — REQUIRES DEVICE** |
 
 The app currently has `minSdk 28` (Android 9). A Galaxy M10 that remains on its original Android 8.1/API 27 firmware is **not install-compatible** with the current release. M10 devices updated to Android 9 or Android 10 are within the supported range. Lowering `minSdk` to API 27 would require a separate compatibility change and full regression pass; it is not claimed by this release.
 
@@ -22,11 +22,11 @@ The app currently has `minSdk 28` (Android 9). A Galaxy M10 that remains on its 
 - Accessibility service uses `BIND_ACCESSIBILITY_SERVICE` and retrieves interactive windows
 - Foreground service behavior selects microphone or `specialUse` types according to API level and permission state
 - Android 15 boot restrictions for microphone foreground services are handled by falling back to `specialUse`
-- WorkManager owns long-running model downloads and can reschedule stopped work
+- WorkManager is used for scheduled background jobs; no LLM model downloads are packaged or scheduled
 - Notifications use a low-importance foreground-service channel
 - Automation is capability-driven; unavailable hardware actions return a controlled result rather than assuming hardware exists
 
-## Required physical-device validation matrix
+## UNVERIFIED — REQUIRES DEVICE: Physical-device validation matrix
 
 The following checks cannot be certified by a JVM test, APK inspection, or an emulator substitute. They require the named Samsung device and firmware.
 
@@ -58,8 +58,10 @@ The following checks cannot be certified by a JVM test, APK inspection, or an em
 - Accessibility and notification-listener toggles.
 - Network loss/recovery.
 - Termux/Shizuku only when separately installed and authorized.
-- Needle 3 ARMv7/ARM64 model loading and local diagnostic tool call.
+- Configure a cloud provider, run a simple response, and exercise a read-only tool call.
+- GitHub public search → open live repository details → ADD/USE project context → Termux clone → inspect README/root-file results.
+- Verify Termux stdout, stderr, and exit-code callback capture on the installed Termux version.
 
 ## Current verification boundary
 
-The repository/build checks cover manifest, SDK, ABI, service declarations, and static compatibility. No Galaxy A07 or Galaxy M10 is attached to the current execution environment, so the physical-device rows above remain **validation required**, not falsely marked PASS. The final release report must attach device model, Android build, battery-policy setting, test case, and result for each matrix row.
+The repository/build checks cover manifest, SDK, ABI, service declarations, and static compatibility. No Galaxy A07 or Galaxy M10 is attached to this execution environment. Every physical-device check above is therefore **UNVERIFIED — REQUIRES DEVICE**, not a PASS. A device test report must attach device model, Android build, battery-policy setting, test case, and result for each row.

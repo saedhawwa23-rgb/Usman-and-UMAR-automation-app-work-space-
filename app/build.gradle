@@ -12,20 +12,13 @@ android {
     compileSdk 36
     def instrumentedTestAbi = project.findProperty('instrumentedTestAbi')
 
-    // USMAN AND UMAR supports Android 9+ on 32-bit and 64-bit ARM devices.
-    ndkVersion "27.2.12479018"
 
     defaultConfig {
         applicationId "com.usmanandumar.app"
         minSdk 28
         targetSdk 34
-        versionCode 22
-        versionName "2.0.2-qwen3"
-        ndk {
-            // Keep ARMv7 distribution compatibility and add ARM64 for Qwen 3.
-            // CI's hosted x86_64 emulators use this explicit test-only override.
-            abiFilters instrumentedTestAbi ?: "armeabi-v7a", "arm64-v8a"
-        }
+        versionCode 23
+        versionName "3.0.0-cloud-ai"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -113,11 +106,6 @@ android {
         // BuildConfig.VERSION_NAME is the single source of the version string the
         // About screen displays; AGP 9 does not generate BuildConfig unless asked.
         buildConfig = true
-    }
-    androidResources {
-        // GGUF is already quantized/compressed; store it directly for fast copy
-        // from APK assets into app-scoped internal storage.
-        noCompress += 'gguf'
     }
     testOptions {
         unitTests {
@@ -207,7 +195,6 @@ room {
 }
 
 dependencies {
-    implementation project(':llama')
     // AndroidX Core & Lifecycle
     // Core 1.19.0 merges the Kotlin extensions into androidx.core:core (making
     // core-ktx an empty compatibility artifact). The AGP 9.1+ half of that
@@ -271,13 +258,6 @@ dependencies {
     // Lottie animations
     implementation 'com.airbnb.android:lottie-compose:6.3.0'
 
-    // Google ML Kit GenAI Prompt API (Android AI Core)
-    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta2'
-    // Android-native on-device inference provider used by the existing provider graph.
-    // This is not a Linux VM, PRoot, Node.js, Python, Ubuntu, or desktop runtime.
-    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.14.0'
-
-
     // Testing
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'androidx.room:room-testing:2.8.4'
@@ -302,66 +282,3 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
-
-// The GGUF is intentionally not committed to Git. Build it into the APK from
-// the pinned upstream artifact and fail closed if the download/hash changes.
-def qwenModelFile = file('src/main/assets/models/qwen3.gguf')
-def qwenModelSha256 = '9acfc1e001311f34b4252001b626f2e466d592a42065f66571bff3790d4e1b14'
-def qwenModelUrl = 'https://huggingface.co/bartowski/Qwen_Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf'
-
-tasks.register('ensureQwen3Model') {
-    outputs.file(qwenModelFile)
-    outputs.upToDateWhen { false }
-    doLast {
-        def matchesPinnedModel = { File candidate ->
-            if (!candidate.isFile() || candidate.length() != 484220320L) return false
-            def digest = java.security.MessageDigest.getInstance('SHA-256')
-            candidate.withInputStream { input ->
-                byte[] buffer = new byte[1024 * 1024]
-                int count
-                while ((count = input.read(buffer)) >= 0) {
-                    if (count > 0) digest.update(buffer, 0, count)
-                }
-            }
-            digest.digest().collect { String.format('%02x', it & 0xff) }.join() == qwenModelSha256
-        }
-        if (matchesPinnedModel(qwenModelFile)) {
-            logger.lifecycle('Verified pinned Qwen 3 GGUF asset (484,220,320 bytes).')
-            return
-        }
-
-        qwenModelFile.parentFile.mkdirs()
-        def partial = new File(qwenModelFile.parentFile, 'qwen3.gguf.download')
-        partial.delete()
-        def connection = new URL(qwenModelUrl).openConnection()
-        connection.connectTimeout = 30000
-        connection.readTimeout = 120000
-        connection.setRequestProperty('User-Agent', 'OpenDroid-Qwen3-build/2.0.0')
-        def digest = java.security.MessageDigest.getInstance('SHA-256')
-        long copied = 0L
-        connection.inputStream.withCloseable { input ->
-            new FileOutputStream(partial).withCloseable { output ->
-                byte[] buffer = new byte[1024 * 1024]
-                int count
-                while ((count = input.read(buffer)) >= 0) {
-                    if (count == 0) continue
-                    output.write(buffer, 0, count)
-                    digest.update(buffer, 0, count)
-                    copied += count
-                    if (copied % (64L * 1024 * 1024) < buffer.length) {
-                        logger.lifecycle("Downloaded Qwen GGUF: ${copied / 1_000_000} MB")
-                    }
-                }
-            }
-        }
-        def actualSha = digest.digest().collect { String.format('%02x', it & 0xff) }.join()
-        if (copied != 484220320L || actualSha != qwenModelSha256) {
-            partial.delete()
-            throw new GradleException("Qwen GGUF mismatch: size=${copied}, sha256=${actualSha}")
-        }
-        if (qwenModelFile.exists()) qwenModelFile.delete()
-        if (!partial.renameTo(qwenModelFile)) throw new GradleException('Could not move verified Qwen GGUF into assets')
-    }
-}
-
-tasks.named('preBuild').configure { dependsOn(tasks.named('ensureQwen3Model')) }

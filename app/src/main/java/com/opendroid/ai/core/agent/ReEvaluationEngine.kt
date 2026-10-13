@@ -235,7 +235,6 @@ class ReEvaluationEngine @Inject constructor(
                 throw failure
             }
 
-            llmProviderFactory.recordPlanningLatency(response)
             try {
                 return decode(cleanJsonString(response.content))
             } catch (_: Exception) {
@@ -244,17 +243,13 @@ class ReEvaluationEngine @Inject constructor(
             }
         }
 
-        val activeProvider = providers.firstOrNull()?.name ?: "On-Device AI"
+        val activeProvider = providers.firstOrNull()?.name ?: "OpenRouter"
         if (lastMalformed == null) {
             throw LLMErrorMapper.safeFallbackUnavailable(
                 activeProvider,
                 providers.firstOrNull()?.availableModels?.firstOrNull().orEmpty()
             )
         }
-        when (ProviderSelectionPolicy.terminalError(activeProvider, providers.size)) {
-            LLMError.SafeFallbackUnavailable ->
-                throw LLMErrorMapper.safeFallbackUnavailable(activeProvider, lastMalformed.model)
-            else -> throw lastMalformed
-        }
+        throw lastMalformed
     }
 }

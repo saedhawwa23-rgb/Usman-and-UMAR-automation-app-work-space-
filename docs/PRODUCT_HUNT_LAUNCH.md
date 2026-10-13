@@ -46,18 +46,18 @@ Thank you for your support! 🚀
 
 ### 1. Tagline Optimization
 - **Current / Standard**: *Autonomous A.I agent for Android.*
-- **Recommended Upgrade**: *Your Open-Source Autonomous AI Agent for Android — Local & Cloud Powered*
-- **Why**: Highlights key differentiators (Open-Source, Local LLM / Privacy, Autonomous Action).
+- **Recommended Upgrade**: *Your Open-Source Android Automation Assistant — Cloud AI, Permission-Aware Actions*
+- **Why**: Highlights the current differentiators (open source, configured cloud reasoning, and user-controlled Android actions).
 
 ### 2. Primary Description
 ```markdown
-OpenDroid is an open-source autonomous AI assistant for Android that plans and executes complex multi-step tasks across your apps and system settings. 
+USMAN AND UMAR is an open-source Android automation assistant that plans tasks with a configured cloud LLM provider and executes approved actions through Android's native permission boundaries.
 
-Powered by local LiteRT models or 11+ cloud LLM providers (DeepSeek, Claude, OpenAI, Ollama), OpenDroid combines accessibility automation, screen vision, voice control, and multi-tier memory to give you total control over your phone.
+OpenRouter is the default provider, with other supported providers available in Settings. Prompts and supplied context are sent to the selected provider for reasoning. GitHub repository discovery uses public GitHub APIs; optional shell commands run in the separately installed Termux app after explicit permission is granted.
 
 Key Features:
 - Autonomous Multi-Step Planning & Dynamic Re-evaluation
-- 100% Local On-Device AI Model Manager (Offline & Gated HuggingFace support)
+- Cloud LLM tool calling with explicit tool validation and action approvals
 - Full System & App Controls (Calls, SMS, WhatsApp, Alarms, Maps, Smart Home)
 - Encrypted Security & Privacy-First Architecture
 - Built natively with Kotlin & Jetpack Compose
@@ -65,9 +65,9 @@ Key Features:
 
 ### 3. Recommended FAQs for Product Hunt Page
 1. **Is OpenDroid completely free and open-source?**
-   - Yes! OpenDroid is 100% open-source (Apache 2.0). You can run local models for free or bring your own API keys.
+   - The app is open-source under Apache 2.0. Configure a supported LLM provider and its API key where required.
 2. **Does OpenDroid send my personal data to external servers?**
-   - No. When using on-device models (LiteRT), zero data leaves your phone. When using cloud providers, API calls go directly to the provider of your choice using your encrypted API keys.
+   - Cloud reasoning sends prompts and supplied context to the provider you select. Provider credentials are protected by the app's credential store. Android actions and optional Termux execution remain permission-gated.
 3. **How does OpenDroid execute actions on my phone?**
    - It uses Android's Accessibility API, intent dispatchers, and system services with multi-tier error fallback.
 4. **What Android versions are supported?**
@@ -88,7 +88,7 @@ We are thrilled to announce that **OpenDroid is officially live on Product Hunt!
 👉 **[Check out OpenDroid on Product Hunt](https://www.producthunt.com/products/opendroid?utm_source=other&utm_medium=social)**
 
 ### 🤖 Why this matters
-OpenDroid started with a vision: giving everyone a privacy-preserving, autonomous AI agent on Android. Thanks to your feedback, contributions, and support, we've built a multi-provider, on-device model manager with screen vision and autonomous planning.
+USMAN AND UMAR builds on the OpenDroid foundation to provide cloud-based AI planning and permission-aware Android automation. Users configure the provider they want to use; repository discovery and optional Termux execution are explicit, separate workflows.
 
 ### 💬 How you can help:
 1. Visit our [Product Hunt listing](https://www.producthunt.com/products/opendroid?utm_source=other&utm_medium=social).

@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.opendroid.ai.core.connector.CloudflareConnectorManager
 import com.opendroid.ai.core.connector.CloudflareServiceState
 import com.opendroid.ai.core.connector.UniversalAgentEvent
-import com.opendroid.ai.core.connector.UniversalLocalAgent
+import com.opendroid.ai.core.connector.CloudToolAgent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class UniversalAgentViewModel @Inject constructor(
-    private val agent: UniversalLocalAgent,
+    private val agent: CloudToolAgent,
     private val cloudflare: CloudflareConnectorManager
 ) : ViewModel() {
     private val mutableEvents = MutableStateFlow<List<UniversalAgentEvent>>(emptyList())
@@ -23,6 +23,8 @@ class UniversalAgentViewModel @Inject constructor(
     private val mutableRunning = MutableStateFlow(false)
     val running: StateFlow<Boolean> = mutableRunning.asStateFlow()
     val cloudflareState: StateFlow<CloudflareServiceState> = cloudflare.state
+
+    init { viewModelScope.launch { cloudflare.refresh() } }
 
     fun run(goal: String) {
         if (goal.isBlank() || mutableRunning.value) return
@@ -34,6 +36,6 @@ class UniversalAgentViewModel @Inject constructor(
         }
     }
 
-    fun connectCloudflare(token: String) { cloudflare.connect(token) }
+    fun connectCloudflare(token: String) { viewModelScope.launch { cloudflare.connect(token) } }
     fun disconnectCloudflare() { cloudflare.disconnect() }
 }

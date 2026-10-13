@@ -35,13 +35,7 @@ sealed class ConnectionTestState {
 }
 
 object ConnectionTestPlanner {
-    private val onDeviceCanonicalNames = setOf(
-        ProviderCatalog.ON_DEVICE,
-        "LiteRT-LM (On-device)"
-    )
-
     fun cloudProviders(): List<String> = ProviderCatalog.providers
-        .filter { spec -> spec.canonicalName !in onDeviceCanonicalNames }
         .map { spec -> spec.displayName }
 
     fun configuredProviders(config: LLMConfig): List<String> =

@@ -66,7 +66,6 @@ enum class ChatErrorPrimaryAction {
 }
 
 fun ChatErrorUiState.primaryAction(): ChatErrorPrimaryAction = when (category) {
-    LLMError.Needle3NotReady -> ChatErrorPrimaryAction.NONE
     LLMError.AuthMissing, LLMError.AuthInvalid -> ChatErrorPrimaryAction.OPEN_SETTINGS
     LLMError.QuotaExhausted -> ChatErrorPrimaryAction.CHOOSE_PROVIDER
     LLMError.ModelUnavailable -> ChatErrorPrimaryAction.CHOOSE_MODEL
@@ -81,7 +80,6 @@ fun ChatErrorUiState.primaryAction(): ChatErrorPrimaryAction = when (category) {
 }
 
 fun ChatErrorUiState.title(): String = when (category) {
-    LLMError.Needle3NotReady -> "Qwen 3 is not ready"
     LLMError.AuthMissing -> "Set up $provider to continue"
     LLMError.AuthInvalid -> "$provider rejected the API key"
     LLMError.QuotaExhausted -> "$provider has no credits available"
@@ -96,10 +94,6 @@ fun ChatErrorUiState.title(): String = when (category) {
 }
 
 fun ChatErrorUiState.guidance(): String = when (category) {
-    LLMError.Needle3NotReady -> buildString {
-        append("Install the bundled Qwen 3 model locally and wait until its status is Ready. No cloud API key is required.")
-        redactedDetail?.toString()?.takeIf { it.isNotBlank() }?.let { append(" Technical detail: $it") }
-    }
     LLMError.AuthMissing -> "Add an API key in Settings."
     LLMError.AuthInvalid -> "Check or replace the key in Settings."
     LLMError.QuotaExhausted -> "Add credits with $provider, or choose another provider."

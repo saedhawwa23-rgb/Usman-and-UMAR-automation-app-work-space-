@@ -1,6 +1,6 @@
-# OpenDroid AI Agent — User & System Guide
+# USMAN AND UMAR — User Guide
 
-OpenDroid is a robust, local-first Android AI Agent designed to execute complex user tasks via structured plans, natural language command processing, and advanced system automation tools.
+USMAN AND UMAR uses a configured LLM provider for reasoning and Android-native permission-aware tools for automation. OpenRouter is the default provider. The app does not bundle a local LLM model.
 
 ---
 
@@ -13,14 +13,14 @@ OpenDroid is a robust, local-first Android AI Agent designed to execute complex 
 6. [System & Settings Actions](#6-system--settings-actions)
 7. [Advanced Control & File System Actions](#7-advanced-control--file-system-actions)
 8. [Macros: Creation & Automation](#8-macros-creation--automation)
-9. [On-Device AI Models (LiteRT-LM)](#9-on-device-ai-models)
-10. [Troubleshooting & Permission Guides](#10-troubleshooting--permission-guides)
+9. [Cloud Provider and Tool Calling](#9-cloud-provider-and-tool-calling)
+10. [GitHub Projects and Termux](#10-github-projects-and-termux)
 
 ---
 
 ## 1. Core Features
 
-OpenDroid leverages a hybrid execution flow to run tasks reliably:
+USMAN AND UMAR uses a cloud-first reasoning and on-device action flow:
 * **Direct Command Aliasing**: Common phrases (e.g., "toggle flashlight", "settings", "detect routines") are intercepted and resolved locally without needing an LLM call.
 * **Structured Planning**: Complex queries (e.g., "take a screenshot and message it to Dad on Telegram") are planned by an LLM into sequential steps.
 * **Self-Contained Actions**: Critical intents (Calls, WhatsApp, Telegram, SMS) do not require opening their apps first. The agent handles deep links or fallback intents natively.
@@ -129,8 +129,24 @@ Create custom automated workflows or schedule them via cron triggers:
 
 ---
 
-## 9. On-Device AI Models (LiteRT-LM)
+## 9. Cloud Provider and Tool Calling
 
-* Download offline models (`Gemma 4 e2b-it`, `Qwen 2.5`, `Llama 3.2`) in Settings $\to$ On-Device Models.
-* Supports background downloads over Wi-Fi or Cellular networks (with data warning confirmation).
-* Verified integrity with SHA-256 validation and JNI compatibility probing.
+1. Open **Settings** and select **OpenRouter** or another supported provider.
+2. Add the provider API key if the provider requires one. Keys are stored by the app's protected credential store.
+3. Select a model that supports the capability you need; tool support varies by model.
+4. Send a task in Chat. The request and relevant context are sent to the selected provider over HTTPS. Tool requests are validated by the app and remain subject to permission and approval rules.
+
+The app does not download, bundle, or run a local LLM. An Ollama endpoint can be configured as a provider when a separate Ollama server is reachable; it is not a model bundled inside the Android app.
+
+## 10. GitHub Projects and Termux
+
+### Public GitHub repository flow
+
+1. In **Discovery**, search GitHub or open a public repository by URL.
+2. Review live metadata, README text, and root file names returned by GitHub's REST API.
+3. Select **ADD** to save the repository to project context or **USE** to save it and make it active.
+4. A repository is not cloned merely by searching, opening, adding, or selecting it.
+
+### Clone and run commands through Termux
+
+Install Termux separately. Enable `allow-external-apps=true` in Termux and grant USMAN AND UMAR the **Run commands in Termux environment** permission. The app sends an executable plus an argument array to Termux; command results are returned through Termux's callback. Termux 0.109+ is needed for reliable callback results. Device-level command execution and clone behavior are **UNVERIFIED — REQUIRES DEVICE** until tested on the target phone.
