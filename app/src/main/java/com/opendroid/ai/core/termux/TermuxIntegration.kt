@@ -1,6 +1,5 @@
 package com.opendroid.ai.core.termux
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -15,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -55,7 +55,7 @@ object TermuxGitHubClone {
         require(ownerPart.matches(owner) && repoPart.matches(repository) && repository != "." && repository != "..") {
             "The GitHub owner or repository name is invalid."
         }
-        val destination = "/data/data/com.termux/files/home/${owner}-${repository}"
+        val destination = "${owner}-${repository}"
         return TermuxCommand("Clone $owner/$repository", "git", listOf("clone", "--depth=1", "https://github.com/$owner/$repository.git", destination))
     }
 }
@@ -152,11 +152,12 @@ class TermuxIntegration @Inject constructor(
      * Sends one allowlisted executable and argv array to Termux; no shell concatenation is used.
      * User must separately enable Termux's `allow-external-apps` setting and grant RUN_COMMAND.
      */
-    @SuppressLint("SdCardPath")
     fun run(task: TermuxTask): Result<Int> = run(TermuxCommand(task.label, task.executable, task.arguments.toList()))
 
     fun cloneGitHubRepository(url: String): Result<Int> = runCatching { TermuxGitHubClone.command(url) }
         .fold(onSuccess = ::run, onFailure = { Result.failure(it) })
+
+    private fun termuxDataDir(): File = File(context.packageManager.getApplicationInfo(TERMUX_PACKAGE, 0).dataDir)
 
     private fun run(task: TermuxCommand): Result<Int> = runCatching {
         check(isInstalled()) { "Termux is not installed." }
@@ -170,12 +171,14 @@ class TermuxIntegration @Inject constructor(
         val flags = PendingIntent.FLAG_ONE_SHOT or
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
         val pendingIntent = PendingIntent.getBroadcast(context, executionId, callback, flags)
-        val prefix = "/data/data/$TERMUX_PACKAGE/files/usr/bin/"
+        val termuxDir = termuxDataDir()
+        val executable = File(termuxDir, "files/usr/bin/${task.executable}").absolutePath
+        val workdir = File(termuxDir, "files/home").absolutePath
         val command = Intent(RUN_COMMAND_ACTION).apply {
             setClassName(TERMUX_PACKAGE, RUN_COMMAND_SERVICE)
-            putExtra(EXTRA_PATH, prefix + task.executable)
+            putExtra(EXTRA_PATH, executable)
             putExtra(EXTRA_ARGUMENTS, task.arguments.toTypedArray())
-            putExtra(EXTRA_WORKDIR, "/data/data/$TERMUX_PACKAGE/files/home")
+            putExtra(EXTRA_WORKDIR, workdir)
             putExtra(EXTRA_BACKGROUND, true)
             putExtra(EXTRA_PENDING_INTENT, pendingIntent)
             putExtra("com.termux.RUN_COMMAND_LABEL", task.label)

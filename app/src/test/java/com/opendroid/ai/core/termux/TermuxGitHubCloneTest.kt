@@ -13,7 +13,7 @@ class TermuxGitHubCloneTest {
         assertEquals(
             listOf(
                 "clone", "--depth=1", "https://github.com/example/mobile-app.git",
-                "/data/data/com.termux/files/home/example-mobile-app"
+                "example-mobile-app"
             ),
             command.arguments
         )

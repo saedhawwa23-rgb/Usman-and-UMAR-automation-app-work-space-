@@ -6,7 +6,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import javax.inject.Inject
@@ -187,7 +186,7 @@ class HttpConnector(
                 val path = Regex("\\{([A-Za-z0-9_]+)}").replace(pathTemplate) { match ->
                     val value = args.get(match.groupValues[1]).asString
                     require(value.length <= 200 && value.none { it.isISOControl() }) { "Path parameter is invalid" }
-                    URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
+                    URLEncoder.encode(value, "UTF-8").replace("+", "%20")
                 }
                 val requestUrl = baseUrl.trimEnd('/') + "/" + path.trimStart('/')
                 val connection = (URL(requestUrl).openConnection() as HttpURLConnection).apply {
