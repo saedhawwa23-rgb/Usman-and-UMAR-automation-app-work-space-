@@ -24,10 +24,4 @@ object ProviderSelectionPolicy {
     fun shouldEscalateMalformed(error: LLMError, hasNextProvider: Boolean): Boolean =
         error == LLMError.MalformedResponse && hasNextProvider
 
-    fun terminalError(activeProvider: String, providerCount: Int): LLMError =
-        if (providerCount == 1 && ProviderCatalog.isOnDevice(activeProvider)) {
-            LLMError.SafeFallbackUnavailable
-        } else {
-            LLMError.MalformedResponse
-        }
 }

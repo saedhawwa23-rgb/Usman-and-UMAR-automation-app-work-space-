@@ -155,21 +155,15 @@ Cloud network requests (OpenAI, Anthropic, Gemini) enforce:
 - Maximum 15-second connection, read, and write timeouts.
 - Exponential backoff retry logic for `HTTP 429` (Rate Limited) and `5xx` server error responses.
 
-### 7.2. Provider Failover Cascade
+### 7.2. Explicit Provider Fallback
 
-If an active cloud provider fails after retries, `LLMProviderFactory` catches the exception and attempts failover to secondary cloud providers or local LiteRT-LM / Ollama offline engines.
+The app has no bundled local inference engine. Any provider fallback is limited to explicitly configured providers and the agent's action-risk policy; it is not an authorization bypass. A provider's catalog lookup does not establish that chat completion or tool calling will succeed.
 
 ---
 
-## 8. Background Model Downloader & File System Resilience
+## 8. Background Work
 
-In [`ModelDownloadWorker.kt`](file:///workspaces/opendroid/app/src/main/java/com/opendroid/ai/core/llm/ModelDownloadWorker.kt):
-
-- **HTTP Range Resume:** Interrupted model downloads resume from the last saved byte offset without corrupting existing disk chunks.
-- **Long-running transfer safeguards:** User-initiated multi-GB downloads require a connected network (with cellular network warning) and run through WorkManager's visible `dataSync` foreground service.
-- **Resumable retry diagnostics:** WorkManager stops, transient transport failures, and retryable `408`/`425`/`429`/`5xx` responses keep the partial `.download` staging file for the next Range request; API 31+ stops also record the WorkManager stop reason without converting the stop into a permanent failure.
-- **SHA-256 Checksum Validation:** Checksum mismatch deletes the temporary `.download` staging file immediately and updates database state to `ModelStatus.FAILED`.
-- **LiteRT C++ JNI Load Test:** Models are tested via C++ JNI instantiation before being marked `READY`. JNI load failure deletes the invalid binary and marks status as `FAILED`.
+WorkManager is retained for scheduled background application jobs such as social automation. LLM model download, local-model verification, and JNI model-load failure paths are not part of the current app; no model artifact is fetched or bundled.
 
 ---
 

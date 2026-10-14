@@ -1,5 +1,7 @@
 package com.opendroid.ai.core.llm
 
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.opendroid.ai.data.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
@@ -17,7 +19,7 @@ sealed class StreamChunk {
     @Serializable
     data class Content(val text: String) : StreamChunk()
     @Serializable
-    data class ToolCall(val name: String, val arguments: String) : StreamChunk()
+    data class ToolCall(val name: String, val arguments: String, val id: String = "") : StreamChunk()
 }
 
 interface AIProvider {
@@ -103,13 +105,35 @@ data class LLMResponse(
     val tokensUsed: Int,
     val model: String,
     val provider: String,
-    val latencyMs: Long
+    val latencyMs: Long,
+    val toolCalls: List<ProviderToolCall> = emptyList()
 )
 
-fun List<ChatMessage>.toOpenAIMessages(systemPrompt: String): List<Map<String, Any>> {
-    val messagesList = mutableListOf<Map<String, Any>>()
+@Serializable
+data class ProviderToolCall(
+    val id: String,
+    val name: String,
+    val arguments: String
+)
+
+fun List<ChatMessage>.toOpenAIMessages(systemPrompt: String): List<Map<String, Any?>> {
+    val messagesList = mutableListOf<Map<String, Any?>>()
     messagesList.add(mapOf("role" to "system", "content" to systemPrompt))
     this.forEach { msg ->
+        if (msg.providerRole == "tool") {
+            messagesList.add(mapOf("role" to "tool", "tool_call_id" to msg.toolCallId, "content" to msg.text))
+            return@forEach
+        }
+        if (msg.providerRole == "assistant" && msg.toolCallsJson != null) {
+            val toolCalls = runCatching {
+                Gson().fromJson<Array<Map<String, Any?>>>(
+                    msg.toolCallsJson,
+                    object : TypeToken<Array<Map<String, Any?>>>() {}.type
+                ).toList()
+            }.getOrDefault(emptyList())
+            messagesList.add(mapOf("role" to "assistant", "content" to msg.text.ifBlank { null }, "tool_calls" to toolCalls))
+            return@forEach
+        }
         val role = if (msg.sender == ChatMessage.Sender.USER) "user" else "assistant"
         if (msg.imageBase64 != null && role == "user") {
             messagesList.add(

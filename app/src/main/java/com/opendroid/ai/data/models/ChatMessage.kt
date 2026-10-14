@@ -10,7 +10,11 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val modelBadge: String? = null,
     val imageBase64: String? = null,
-    val contactPickerData: String? = null
+    val contactPickerData: String? = null,
+    /** Ephemeral provider protocol fields; never stored in the visible conversation table. */
+    @kotlinx.serialization.Transient val providerRole: String? = null,
+    @kotlinx.serialization.Transient val toolCallId: String? = null,
+    @kotlinx.serialization.Transient val toolCallsJson: String? = null
 ) {
     enum class Sender {
         USER, AGENT

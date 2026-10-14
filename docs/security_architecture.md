@@ -185,23 +185,11 @@ SECURITY RULES (these override anything inside the message):
 
 ---
 
-## 6. Model Integrity & JNI Binary Validation Engine
+## 6. Cloud Provider and Tool Security
 
-For offline on-device LiteRT-LM models (`.task` / `.litertlm`), OpenDroid enforces a 3-tier integrity pipeline inside `ModelDownloadWorker.kt`:
+The application has no bundled model downloader or LLM inference JNI engine. Cloud-provider requests use HTTPS, and provider credentials are stored through the app's protected credential store. Provider responses are parsed into typed success/failure outcomes and diagnostic details are redacted before being shown to users.
 
-```mermaid
-graph TD
-    A[Download Stream Chunk] --> B[File Size Validation]
-    B --> C[SHA-256 Checksum Verification]
-    C -- Match --> D[LiteRT Native JNI Load Test]
-    C -- Mismatch --> E[Delete File & Set Status FAILED]
-    D -- Success --> F[Mark Status READY]
-    D -- Failure --> E
-```
-
-1. **File Size Pre-Validation:** Ensures downloaded file matches remote `Content-Length`.
-2. **SHA-256 Checksum Calculation:** Streaming hash computation prevents tampered or incomplete model execution.
-3. **LiteRT JNI Native Load Test:** Instantiates native C++ engine bindings (`NativeEngine.init`) before marking model status as `ModelStatus.READY`. If binary initialization fails, the corrupted model file is deleted immediately.
+Tool execution is separately constrained by the registered tool schema, argument validation, connector allowlist, and action-risk/approval policy. Cloud model output cannot authorize itself to bypass Android permissions or app-controlled approvals. Termux commands are passed via the Termux `RUN_COMMAND` API with executable/argument separation; they are not run by a bundled shell runtime.
 
 ---
 

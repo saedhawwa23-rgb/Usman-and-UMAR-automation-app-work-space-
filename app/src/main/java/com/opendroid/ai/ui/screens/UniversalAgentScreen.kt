@@ -36,9 +36,9 @@ fun UniversalAgentScreen(viewModel: UniversalAgentViewModel = hiltViewModel()) {
         modifier = Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("UNIVERSAL LOCAL AGENT", color = AppTheme.colors.textPrimary, fontSize = 22.sp)
+        Text("CLOUD AI TOOL AGENT", color = AppTheme.colors.textPrimary, fontSize = 22.sp)
         Text(
-            "Qwen 3 plans locally. Connectors discover tools, enforce authorization, and return redacted results.",
+            "Uses the selected cloud provider's native tool-call protocol. Read-only and reversible tools may run; sensitive and destructive actions are denied until a real approval flow is implemented.",
             color = AppTheme.colors.textSecondary
         )
         OutlinedTextField(
@@ -46,14 +46,15 @@ fun UniversalAgentScreen(viewModel: UniversalAgentViewModel = hiltViewModel()) {
             onValueChange = { goal = it },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Describe a task") },
-            placeholder = { Text("Deploy my project and check the logs") }
+            placeholder = { Text("Inspect this public GitHub repository") }
         )
         Button(onClick = { viewModel.run(goal) }, enabled = goal.isNotBlank() && !running) {
-            Text(if (running) "RUNNING LOCALLY…" else "RUN WITH QWEN 3")
+            Text(if (running) "RUNNING WITH CLOUD PROVIDER…" else "RUN WITH SELECTED PROVIDER")
         }
-        Text("CLOUDFLARE CONNECTOR", color = AppTheme.colors.textPrimary, fontSize = 16.sp)
+        Text("CLOUDFLARE API TOKEN (NO WORKER TARGET CONFIGURED)", color = AppTheme.colors.textPrimary, fontSize = 16.sp)
         Text("Status: ${cloudflare.status}", color = AppTheme.colors.textSecondary)
         Text(cloudflare.message, color = AppTheme.colors.textSecondary, fontSize = 12.sp)
+        Text("This verifies the Cloudflare API token only. A deployed Worker URL and Worker health/deployment API have not been configured or tested.", color = AppTheme.colors.textSecondary, fontSize = 12.sp)
         if (cloudflare.status.name == "CONNECTED") {
             TextButton(onClick = viewModel::disconnectCloudflare) { Text("DISCONNECT CLOUDFLARE") }
         } else {

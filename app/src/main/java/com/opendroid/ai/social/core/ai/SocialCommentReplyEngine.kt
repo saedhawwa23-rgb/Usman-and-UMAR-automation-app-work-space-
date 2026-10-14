@@ -113,7 +113,7 @@ open class SocialCommentReplyEngine {
             }
             text.contains("offline") || text.contains("privacy") -> {
                 SuggestedReply(
-                    replyText = "Yes! USMAN AND UMAR runs local LiteRT on-device models with complete offline privacy 🛡️",
+                    replyText = "USMAN AND UMAR uses cloud AI for reasoning and keeps device actions permission-controlled. See our privacy details for how each feature handles data.",
                     isConfident = true,
                     confidenceScore = 0.95f,
                     reason = "Privacy & on-device core architecture"

@@ -156,7 +156,7 @@ class SocialRuleEngineTest {
             triggerType = "KEYWORD_MATCH",
             keywords = listOf("offline"),
             actionType = "AUTO_REPLY",
-            replyTemplate = "OpenDroid runs fully offline using LiteRT!",
+            replyTemplate = "USMAN AND UMAR uses cloud AI with permission-aware device automation.",
             confidenceThreshold = 0.95f,
             requireHumanApproval = false
         )

@@ -40,7 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.opendroid.ai.data.models.DynamicAIProvider
+import com.opendroid.ai.core.llm.ModelFetchOutcome
 import com.opendroid.ai.data.models.GitHubProject
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.DiscoveryViewModel
@@ -55,16 +55,13 @@ fun DiscoveryScreen(
     val githubResults by viewModel.githubResults.collectAsState()
     val aiResults by viewModel.aiResults.collectAsState()
     val savedProjects by viewModel.savedProjects.collectAsState()
+    val openedRepository by viewModel.openedRepository.collectAsState()
     val savedProviders by viewModel.savedProviders.collectAsState()
     val busy by viewModel.busy.collectAsState()
     val message by viewModel.message.collectAsState()
     var tab by remember { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
     var query by remember { mutableStateOf("") }
     var directUrl by remember { mutableStateOf("") }
-    var selectedAI by remember { mutableStateOf<GitHubProject?>(null) }
-    var endpoint by remember { mutableStateOf("") }
-    var model by remember { mutableStateOf("") }
-    var apiKey by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) { viewModel.refreshSaved() }
 
@@ -79,7 +76,7 @@ fun DiscoveryScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("SEARCH AI") })
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("AI PROVIDERS") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("SEARCH GITHUB") })
             }
             LazyColumn(
@@ -92,7 +89,7 @@ fun DiscoveryScreen(
                         onValueChange = { query = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        label = { Text(if (tab == 0) "Search AI providers or models" else "Search GitHub projects") },
+                        label = { Text(if (tab == 0) "Provider name or model ID" else "Search public GitHub projects") },
                         leadingIcon = { Icon(Icons.Default.Search, null) }
                     )
                     Spacer(Modifier.height(8.dp))
@@ -100,7 +97,7 @@ fun DiscoveryScreen(
                         onClick = { if (tab == 0) viewModel.searchAI(query) else viewModel.searchGitHub(query) },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text(if (busy) "SEARCHING..." else "SEARCH") }
+                    ) { Text(if (busy) "SEARCHING LIVE ENDPOINTS…" else "SEARCH") }
                     if (message != null) {
                         Spacer(Modifier.height(8.dp))
                         Text(message!!, color = AppTheme.colors.textSecondary)
@@ -109,31 +106,31 @@ fun DiscoveryScreen(
 
                 if (tab == 0) {
                     item {
-                        Text("Select a discovery result, then configure its endpoint, model, and API key before adding it.", color = AppTheme.colors.textSecondary)
+                        Text(
+                            "Models below are returned by the provider's live catalog endpoint. This does not by itself verify chat completion or tool calling. Configure credentials/endpoints in Settings where required.",
+                            color = AppTheme.colors.textSecondary
+                        )
                     }
-                    items(aiResults, key = { it.id }) { project ->
-                        DiscoveryProjectCard(project, onOpen = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, project.htmlUrl.toUri()))
-                        }, onSelect = {
-                            selectedAI = project
-                            endpoint = "https://api.openai.com/v1"
-                            model = project.fullName.substringAfter('/').ifBlank { "model-id" }
-                        }, onAdd = { viewModel.addProject(project) })
-                    }
-                    selectedAI?.let { project ->
-                        item {
-                            Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("CONFIGURE AI PROVIDER", fontWeight = FontWeight.Bold)
-                                    Text(project.fullName)
-                                    OutlinedTextField(endpoint, { endpoint = it }, Modifier.fillMaxWidth(), label = { Text("OpenAI-compatible endpoint") }, singleLine = true)
-                                    OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Model ID") }, singleLine = true)
-                                    OutlinedTextField(apiKey, { apiKey = it }, Modifier.fillMaxWidth(), label = { Text("API key") }, singleLine = true)
-                                    Button(onClick = {
-                                        viewModel.addProvider(DynamicAIProvider("discovered:${project.fullName}", project.fullName, endpoint, model, project.description, project.htmlUrl), apiKey)
-                                        selectedAI = null
-                                        apiKey = ""
-                                    }, modifier = Modifier.fillMaxWidth()) { Text("ADD AND USE") }
+                    items(aiResults, key = { it.provider }) { providerResult ->
+                        Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
+                            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(providerResult.provider, fontWeight = FontWeight.Bold)
+                                when (val outcome = providerResult.outcome) {
+                                    is ModelFetchOutcome.Success -> {
+                                        if (outcome.models.isEmpty()) Text("The provider returned no chat-capable models.", color = AppTheme.colors.textSecondary)
+                                        outcome.models.take(30).forEach { liveModel ->
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(liveModel.displayName)
+                                                    Text(liveModel.id, color = AppTheme.colors.textSecondary)
+                                                    liveModel.contextWindow?.let { Text("Context: $it tokens", color = AppTheme.colors.textSecondary) }
+                                                }
+                                                OutlinedButton(onClick = { viewModel.selectModel(liveModel) }) { Text("USE") }
+                                            }
+                                        }
+                                    }
+                                    is ModelFetchOutcome.NeedsCredentials -> Text(outcome.message, color = AppTheme.colors.textSecondary)
+                                    is ModelFetchOutcome.Failed -> Text(outcome.message, color = AppTheme.colors.accentRed)
                                 }
                             }
                         }
@@ -151,12 +148,24 @@ fun DiscoveryScreen(
                     item {
                         OutlinedTextField(directUrl, { directUrl = it }, Modifier.fillMaxWidth(), label = { Text("Direct GitHub URL or owner/repository") }, singleLine = true)
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = { viewModel.openRepository(directUrl) }, enabled = directUrl.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("OPEN / ANALYZE REPOSITORY") }
+                        OutlinedButton(onClick = { viewModel.openRepository(directUrl) }, enabled = directUrl.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("LOOK UP REPOSITORY") }
+                        Text("Search and lookup use the public GitHub REST API. Lookup is read-only; private repositories require an authenticated integration and are not represented as public results.", color = AppTheme.colors.textSecondary)
+                    }
+                    openedRepository?.let { project ->
+                        item {
+                            Text("LOOKUP RESULT (NOT SAVED)", fontWeight = FontWeight.Bold)
+                            DiscoveryProjectCard(project, onOpen = {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, project.htmlUrl.toUri()))
+                            }, onAdd = { viewModel.addProject(project) }, onUse = { viewModel.useProject(project) })
+                            OutlinedButton(onClick = { viewModel.cloneRepository(project.cloneUrl) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("CLONE TO TERMUX")
+                            }
+                        }
                     }
                     items(githubResults, key = { it.id }) { project ->
                         DiscoveryProjectCard(project, onOpen = {
                             context.startActivity(Intent(Intent.ACTION_VIEW, project.htmlUrl.toUri()))
-                        }, onSelect = {}, onAdd = { viewModel.addProject(project) }, onUse = { viewModel.useProject(project) }, showSelect = false)
+                        }, onAdd = { viewModel.addProject(project) }, onUse = { viewModel.useProject(project) })
                     }
                     item {
                         Text("SUPPORTED PROJECTS", fontWeight = FontWeight.Bold)
@@ -177,21 +186,21 @@ fun DiscoveryScreen(
 private fun DiscoveryProjectCard(
     project: GitHubProject,
     onOpen: () -> Unit,
-    onSelect: () -> Unit,
     onAdd: () -> Unit,
-    onUse: () -> Unit = {},
-    showSelect: Boolean = true
+    onUse: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(project.fullName, fontWeight = FontWeight.Bold)
             Text(project.description.ifBlank { "No description provided." }, color = AppTheme.colors.textSecondary)
             Text("★ ${project.stars}${project.language?.let { " • $it" } ?: ""}", color = AppTheme.colors.textSecondary)
+            if (project.defaultBranch.isNotBlank()) Text("Default branch: ${project.defaultBranch} · Forks: ${project.forks} · Open issues: ${project.openIssues}", color = AppTheme.colors.textSecondary)
+            if (project.rootFiles.isNotEmpty()) Text("Root files: ${project.rootFiles.joinToString()}", color = AppTheme.colors.textSecondary)
+            if (project.readme.isNotBlank()) Text("README preview:\n${project.readme.take(2_500)}", color = AppTheme.colors.textSecondary)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onOpen) { Text("OPEN") }
                 OutlinedButton(onClick = onAdd) { Text("ADD") }
                 OutlinedButton(onClick = onUse) { Text("USE") }
-                if (showSelect) OutlinedButton(onClick = onSelect) { Text("SELECT") }
             }
         }
     }

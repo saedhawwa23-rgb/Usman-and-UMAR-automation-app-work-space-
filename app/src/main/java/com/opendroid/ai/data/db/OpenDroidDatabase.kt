@@ -19,11 +19,9 @@ import com.opendroid.ai.data.db.entities.TaskHistoryEntity
 
 import com.opendroid.ai.data.db.dao.NotificationDao
 import com.opendroid.ai.data.db.dao.UnknownActionDao
-import com.opendroid.ai.data.db.dao.ModelDao
 import com.opendroid.ai.data.db.dao.CrashLogDao
 import com.opendroid.ai.data.db.entities.NotificationEntity
 import com.opendroid.ai.data.db.entities.UnknownActionEntity
-import com.opendroid.ai.data.db.entities.ModelEntity
 import com.opendroid.ai.data.db.entities.CrashLogEntity
 import com.opendroid.ai.data.db.dao.HabitDao
 import com.opendroid.ai.data.db.entities.HabitEventEntity
@@ -44,7 +42,6 @@ import com.opendroid.ai.data.db.dao.SocialAnalyticsDao
 import com.opendroid.ai.data.db.dao.SocialCampaignDao
 import com.opendroid.ai.data.db.dao.SocialAutomationRuleDao
 import com.opendroid.ai.data.db.dao.SocialAuditLogDao
-import androidx.room.TypeConverters
 
 @Database(
     entities = [
@@ -56,7 +53,6 @@ import androidx.room.TypeConverters
         MacroEntity::class,
         UnknownActionEntity::class,
         NotificationEntity::class,
-        ModelEntity::class,
         CrashLogEntity::class,
         HabitEventEntity::class,
         HabitRoutineEntity::class,
@@ -69,10 +65,9 @@ import androidx.room.TypeConverters
         SocialAutomationRuleEntity::class,
         SocialAuditLogEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
-@TypeConverters(Converters::class)
 abstract class OpenDroidDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
     abstract fun chatSessionDao(): ChatSessionDao
@@ -82,7 +77,6 @@ abstract class OpenDroidDatabase : RoomDatabase() {
     abstract fun macroDao(): MacroDao
     abstract fun unknownActionDao(): UnknownActionDao
     abstract fun notificationDao(): NotificationDao
-    abstract fun modelDao(): ModelDao
     abstract fun crashLogDao(): CrashLogDao
     abstract fun habitDao(): HabitDao
     abstract fun socialAccountDao(): SocialAccountDao
@@ -447,6 +441,13 @@ abstract class OpenDroidDatabase : RoomDatabase() {
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_social_audit_logs_actor ON social_audit_logs(actor)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_social_audit_logs_platform ON social_audit_logs(platform)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_social_audit_logs_action ON social_audit_logs(action)")
+            }
+        }
+
+        /** Drops the retired on-device model catalog without touching user data. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS models")
             }
         }
     }

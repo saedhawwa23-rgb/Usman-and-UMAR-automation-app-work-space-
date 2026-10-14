@@ -95,8 +95,7 @@
   <div class="prose">
 
     <div class="info-box">
-      <strong>Summary:</strong> OpenDroid is an open-source, on-device application. We are committed to transparency and privacy. 
-      Your data stays on your device — we do not operate servers that collect or store your personal information.
+      <strong>Summary:</strong> USMAN AND UMAR is an Android app with cloud-based AI reasoning. We do not operate a backend that collects user prompts, but prompts and relevant context are sent to the LLM provider you configure. Device actions remain permission-gated.
     </div>
 
     <h2>1. Introduction</h2>
@@ -114,17 +113,17 @@
       <li>Device identifiers (IMEI, advertising ID, etc.)</li>
     </ul>
 
-    <h2>3. Information Processed Locally</h2>
-    <p>OpenDroid processes certain data <strong>entirely on your device</strong> to provide its autonomous agent capabilities:</p>
+    <h2>3. Local Processing and Cloud Context</h2>
+    <p>Android actions, app settings, and saved memory are handled on your device. When you use cloud reasoning, the prompt and context needed for that request are sent over HTTPS to the LLM provider selected in Settings. Screen or other device context may be included when required for a requested feature.</p>
 
     <h3>3.1 Accessibility Service Data</h3>
-    <p>OpenDroid uses Android Accessibility Services to read screen content, perform clicks, scroll actions, and navigate apps on your behalf. This data is processed in real-time and in memory only — it is <strong>not stored persistently</strong> nor transmitted off your device by the App itself.</p>
+    <p>USMAN AND UMAR uses Android Accessibility Services to read screen content, perform clicks, scroll actions, and navigate apps on your behalf. Accessibility operations occur on-device; relevant screen text or images may be included in a request to your selected LLM provider when needed to plan or complete a task. Avoid sending sensitive screen content unless you intend to share it with that provider.</p>
 
     <h3>3.2 Voice and Audio Data</h3>
     <p>If you enable the voice interface, OpenDroid accesses your microphone for wake word detection and speech-to-text conversion. Audio is processed locally using Android's built-in speech recognition engine. Audio recordings are <strong>not stored or transmitted</strong> by OpenDroid.</p>
 
     <h3>3.3 Memory System</h3>
-    <p>OpenDroid maintains a multi-tier memory system (working, episodic, semantic, and procedural memory) stored locally on your device using Room Database. This memory includes:</p>
+    <p>USMAN AND UMAR stores app memory (where enabled) locally on your device using Room Database. The app may include relevant memory/context in a cloud LLM request to answer your prompt. This memory can include:</p>
     <ul>
       <li>Summaries of past interactions and task outcomes</li>
       <li>User preferences and personal facts you share conversationally</li>
@@ -146,8 +145,8 @@
     <h3>4.1 API Keys</h3>
     <p>API keys you enter are stored locally on your device, encrypted at rest with a key held in the Android KeyStore (see the <a href="security.html">Security</a> page for details). They are <strong>never</strong> transmitted to OpenDroid servers (we operate none). Keys are sent only to the respective API provider's endpoint when making LLM requests.</p>
 
-    <h3>4.2 Local / Offline Mode</h3>
-    <p>OpenDroid supports fully offline operation via Ollama. When using a local model server, no data leaves your device or local network.</p>
+    <h3>4.2 Configured Ollama Endpoint</h3>
+    <p>The app does not bundle an offline LLM. If you configure an Ollama server on your device or local network, inference requests are sent to that endpoint instead of a public cloud LLM provider. This requires that the endpoint be running and reachable; it does not make all app features offline.</p>
 
     <h2>5. Permissions</h2>
     <p>OpenDroid requests certain Android permissions to function. All requested permissions are used to execute actions locally on your device at your direction:</p>

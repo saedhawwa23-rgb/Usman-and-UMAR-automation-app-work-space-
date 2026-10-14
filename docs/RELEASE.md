@@ -1,12 +1,10 @@
-# OpenDroid Releases
+# Archived Upstream OpenDroid Releases
 
-This document tracks release updates, changelogs, and binary verification checksums for the OpenDroid project.
+This file is retained as historical release context from the imported OpenDroid source project. It is **not** the current USMAN AND UMAR release record, and its model, device-test, version, and asset claims must not be read as current. See the current app version in `app/build.gradle` and the cloud-first design in [`architecture.md`](architecture.md).
 
 ---
 
-## v1.0.7 — Latest Release (September 4, 2026)
-
-Current release. Sideload the APK for direct install, or use the AAB for Play Store distribution.
+## v1.0.7 — Historical upstream release (September 4, 2026)
 
 ### Highlights since v1.0.6
 

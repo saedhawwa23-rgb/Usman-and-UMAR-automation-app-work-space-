@@ -118,7 +118,7 @@ class TelegramAdapter @Inject constructor(
                         content = "Does USMAN AND UMAR v1.1 support offline local models?",
                         timestamp = System.currentTimeMillis() - 3600_000,
                         status = "UNREAD",
-                        suggestedAction = "Draft response confirming LiteRT on-device support"
+                        suggestedAction = "Draft a response explaining the cloud-first AI and permission-aware automation approach"
                     )
                 )
             )

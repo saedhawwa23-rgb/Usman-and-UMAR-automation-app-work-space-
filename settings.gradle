@@ -15,4 +15,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "OpenDroid"
 include ':app'
-include ':llama'

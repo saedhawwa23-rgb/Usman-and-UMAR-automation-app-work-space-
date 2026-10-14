@@ -36,7 +36,6 @@ fun CapabilitiesScreen(
     onSearchAI: () -> Unit,
     onSearchGitHub: () -> Unit,
     onTermux: () -> Unit,
-    onNeedle3: () -> Unit,
     onUniversalAgent: () -> Unit
 ) {
     Column(
@@ -50,20 +49,20 @@ fun CapabilitiesScreen(
             fontSize = 22.sp
         )
         Text(
-            text = "Discover providers, add GitHub projects, and run explicitly allowlisted local Termux tasks.",
+            text = "Discover live cloud model catalogs, inspect public GitHub repositories, and run explicitly allowlisted Termux tasks.",
             color = AppTheme.colors.textSecondary,
             fontSize = 13.sp
         )
         Spacer(Modifier.height(4.dp))
         CapabilityCard(
             title = "SEARCH AI PROVIDERS",
-            description = "Search live provider and model projects, configure an endpoint, and add a provider dynamically.",
+            description = "Query configured AI provider model-list endpoints; results are not misrepresented as verified chat/tool capability.",
             icon = Icons.Default.Search,
             onClick = onSearchAI
         )
         CapabilityCard(
             title = "SEARCH GITHUB PROJECTS",
-            description = "Search GitHub or analyze a repository URL, then add it to the active project context.",
+            description = "Search public GitHub repositories, preview README/files, then explicitly ADD, USE, or CLONE.",
             icon = Icons.Default.Code,
             onClick = onSearchGitHub
         )
@@ -74,14 +73,8 @@ fun CapabilitiesScreen(
             onClick = onTermux
         )
         CapabilityCard(
-            title = "QWEN 3 LOCAL",
-            description = "Load Qwen 3 on-device with llama.cpp and run structured tool calls without a cloud API.",
-            icon = Icons.Default.Extension,
-            onClick = onNeedle3
-        )
-        CapabilityCard(
-            title = "UNIVERSAL LOCAL AGENT",
-            description = "Orchestrate MCP, REST, OAuth, CLI, webhook, developer, cloud, and hosting connectors with Qwen 3.",
+            title = "CLOUD AI TOOL AGENT",
+            description = "Use the configured cloud provider's native tool-call protocol with allowlisted local connectors. Sensitive/destructive actions remain blocked pending approval.",
             icon = Icons.Default.Extension,
             onClick = onUniversalAgent
         )

@@ -166,7 +166,7 @@ class SocialCampaignGenerator @Inject constructor(
                 id = UUID.randomUUID().toString(),
                 accountId = "pending",
                 platform = SocialPlatform.LINKEDIN,
-                content = "We are proud to unveil our new initiative: $name.\n\n$objective.\n\nUSMAN AND UMAR sets a new standard for on-device autonomy with local LiteRT AI models and zero tracking.\n\n#AI #Engineering #Android",
+                content = "We are proud to unveil our new initiative: $name.\n\n$objective.\n\nUSMAN AND UMAR combines cloud AI reasoning with permission-aware Android automation.\n\n#AI #Engineering #Android",
                 status = PostStatus.DRAFT,
                 scheduledPublishTime = startDate + dayMillis * 2 + 3600_000L * 4,
                 campaignId = campaignId,

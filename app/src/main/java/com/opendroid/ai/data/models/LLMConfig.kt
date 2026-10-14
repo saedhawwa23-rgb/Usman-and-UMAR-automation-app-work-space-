@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 import com.opendroid.ai.core.llm.AIModel
 import com.opendroid.ai.core.llm.ClaudeModelCatalog
 import com.opendroid.ai.core.llm.ProviderCatalog
-import com.opendroid.ai.core.llm.OnDeviceLatencyProfile
 
 private const val TAG = "LLMConfig"
 
@@ -17,11 +16,11 @@ private fun warnCoercion() = runCatching {
 
 @Serializable
 data class LLMConfig(
-    /** The local agent is the only provider used for autonomous execution. */
-    val activeProvider: String = ProviderCatalog.QWEN3_LOCAL,
+    /** New installations use the OpenRouter cloud provider; a user key is required. */
+    val activeProvider: String = "OpenRouter",
     // Read from the catalog rather than repeated here, so one seed cannot drift
     // from the other. It is replaced by the provider's live list on first fetch.
-    val activeModel: String = ProviderCatalog.defaultModel(ProviderCatalog.QWEN3_LOCAL),
+    val activeModel: String = ProviderCatalog.defaultModel("OpenRouter"),
     /**
      * Provider/model pairs. `null` means the setting predates this field and is
      * resolved lazily from [activeProvider]/[activeModel] without an upgrade
@@ -41,8 +40,6 @@ data class LLMConfig(
     // An explicit empty map means "user revoked everything" and stays empty.
     val grantedActions: Map<String, Long>? = null,
     val latencyBenchmarks: Map<String, Long> = emptyMap(), // Provider -> latency Ms
-    /** Per-device, per-model-tier local planning measurements. */
-    val onDeviceLatencyProfiles: Map<String, OnDeviceLatencyProfile> = emptyMap(),
     /** Provider names explicitly allowed as planning fallbacks; empty means none. */
     val fallbackProviders: List<String> = emptyList(),
     val elevenLabsApiKey: String = "",
@@ -112,9 +109,7 @@ fun LLMConfig.selectedModelFor(providerName: String): String {
     val rawSelected = migratedPairs?.get(provider)?.takeIf(String::isNotBlank)
         ?: (if (selectedModels == null) legacySelection else null)
         ?: ProviderCatalog.defaultModel(provider)
-    val selected = if (provider == ProviderCatalog.QWEN3_LOCAL && rawSelected.equals("needle3", ignoreCase = true)) {
-        ProviderCatalog.defaultModel(provider)
-    } else rawSelected
+    val selected = rawSelected
 
     return if (provider == "Anthropic Claude") {
         resolveClaudeModelId(selected)

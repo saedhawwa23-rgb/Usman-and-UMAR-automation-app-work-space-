@@ -1,6 +1,5 @@
 package com.opendroid.ai.core.llm
 
-import android.util.Log
 import com.opendroid.ai.actions.ActionDispatcher
 import com.opendroid.ai.core.agent.DeviceStateProvider
 import com.opendroid.ai.core.agent.IntentClassifier
@@ -9,8 +8,6 @@ import com.opendroid.ai.core.llm.prompts.SystemPrompts
 import com.opendroid.ai.core.llm.error.LLMErrorMapper
 import com.opendroid.ai.core.llm.error.SecretRegistry
 import com.opendroid.ai.core.llm.providers.*
-import com.opendroid.ai.core.llm.providers.HybridOnDeviceProvider
-import com.opendroid.ai.core.llm.providers.LiteRTLMProvider
 import com.opendroid.ai.data.models.LLMConfig
 import com.opendroid.ai.data.models.selectedModelFor
 import com.opendroid.ai.data.repository.SettingsRepository
@@ -40,13 +37,8 @@ class LLMProviderFactory @Inject constructor(
     private val deepSeekProvider: Provider<DeepSeekProvider>,
     private val copilotProvider: Provider<CopilotProvider>,
     private val customOpenAIProvider: Provider<CustomOpenAIProvider>,
-    private val gemmaProvider: Provider<GemmaProvider>,
-    private val liteRTLMProvider: Provider<LiteRTLMProvider>,
-    private val needle3LocalProvider: Provider<Needle3LocalProvider>,
     private val okHttpClient: OkHttpClient,
-    private val hybridOnDeviceProvider: Provider<HybridOnDeviceProvider>,
     private val settingsRepository: SettingsRepository,
-    private val onDeviceLatencyTracker: OnDeviceLatencyTracker,
     private val actionDispatcher: dagger.Lazy<ActionDispatcher>,
     private val intentClassifier: dagger.Lazy<IntentClassifier>,
     private val deviceStateProvider: DeviceStateProvider
@@ -70,15 +62,8 @@ class LLMProviderFactory @Inject constructor(
             "DeepSeek" -> deepSeekProvider.get()
             "Copilot API" -> copilotProvider.get()
             "Custom OpenAI Compatible" -> customOpenAIProvider.get()
-            // Hybrid on-device: both old and new names map here
-            "On-Device AI",
-            "Gemma 4 (On-device)" -> hybridOnDeviceProvider.get()
-            // Direct backend access (for advanced users / testing)
-            "LiteRT-LM (On-device)" -> liteRTLMProvider.get()
-            ProviderCatalog.NEEDLE3_LOCAL -> needle3LocalProvider.get()
             else -> {
-                Log.w(TAG, "Unknown LLM provider persisted; selecting Qwen 3 Local.")
-                needle3LocalProvider.get()
+                throw IllegalArgumentException("Unsupported AI provider ‘$name’. Select a configured cloud provider in Settings.")
             }
         }
         return WrappedLLMProvider(
@@ -89,9 +74,8 @@ class LLMProviderFactory @Inject constructor(
     }
 
     suspend fun getActiveProvider(): LLMProvider {
-        // Legacy installations may persist Google Gemini, but autonomous agent
-        // execution must never request a cloud API key. Qwen 3 is authoritative.
-        return getProviderByName(ProviderCatalog.NEEDLE3_LOCAL)
+        val config = settingsRepository.llmConfig.first()
+        return getProviderByName(config.activeProvider)
     }
 
     /**
@@ -100,17 +84,16 @@ class LLMProviderFactory @Inject constructor(
      * contacted; high-impact plans never cross a provider boundary silently.
      */
     suspend fun getPlanningProviders(actionNames: Collection<String>): List<LLMProvider> {
-        // Do not consult persisted fallback providers here: older settings can
-        // contain Gemini, but local agent planning has no cloud fallback path.
-        return listOf(getProviderByName(ProviderCatalog.NEEDLE3_LOCAL))
+        val config = settingsRepository.llmConfig.first()
+        val candidates = (listOf(config.activeProvider) + config.fallbackProviders)
+            .map(ProviderCatalog::canonicalName)
+            .distinct()
+        val selected = candidates.filterIndexed { index, provider -> index == 0 || isConfigured(config, provider) }
+        return selected.map(::getProviderByName)
     }
-
-    suspend fun recordPlanningLatency(response: LLMResponse): LatencyBudgetResult? =
-        runCatching { onDeviceLatencyTracker.recordPlanning(response) }.getOrNull()
 
     private fun isConfigured(config: LLMConfig, providerName: String): Boolean {
         val provider = ProviderCatalog.canonicalName(providerName)
-        if (ProviderCatalog.isOnDevice(provider)) return true
         return when (provider) {
             "Ollama" -> config.ollamaUrl.isNotBlank()
             "Copilot API" -> config.copilotUrl.isNotBlank()
@@ -159,9 +142,6 @@ class LLMProviderFactory @Inject constructor(
         return request
     }
 
-    private companion object {
-        const val TAG = "LLMProviderFactory"
-    }
 }
 
 data class RetryRuntime(
@@ -226,6 +206,23 @@ class WrappedLLMProvider(
     }
 
     override suspend fun isAvailable(): Boolean = delegate.isAvailable()
+
+    override suspend fun generate(
+        messages: List<com.opendroid.ai.data.models.ChatMessage>,
+        tools: List<ToolDefinition>
+    ): Flow<StreamChunk> = flow {
+        val request = LLMRequest(
+            systemPrompt = "You are a helpful Android development assistant. Use supplied tools when needed; do not invent tool results.",
+            messages = messages,
+            maxTokens = 2048,
+            responseFormat = ResponseFormat.TEXT,
+            tools = tools.map { Tool(it.name, it.description, it.parameters) },
+            retryPolicy = RetryPolicy.DEFAULT
+        )
+        val response = complete(request)
+        if (response.content.isNotBlank()) emit(StreamChunk.Content(response.content))
+        response.toolCalls.forEach { call -> emit(StreamChunk.ToolCall(call.name, call.arguments, call.id)) }
+    }
 
     private suspend fun resolveRequest(request: LLMRequest): LLMRequest {
         val config = configProvider()

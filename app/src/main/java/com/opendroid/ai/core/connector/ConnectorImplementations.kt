@@ -4,7 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-/** JSON-RPC MCP connector. It never gives Needle access to authorization headers. */
+/** JSON-RPC MCP connector. It never gives the language model access to authorization headers. */
 class McpConnector(
     override val id: String,
     override val displayName: String,
