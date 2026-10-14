@@ -10,6 +10,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 enum class CommandBackend {
+    INTEGRATED_LINUX,
     SHIZUKU,
     ROOT,
     APP_SHELL,

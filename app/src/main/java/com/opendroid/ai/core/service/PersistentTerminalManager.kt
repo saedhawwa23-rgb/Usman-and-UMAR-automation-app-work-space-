@@ -1,5 +1,6 @@
 package com.opendroid.ai.core.service
 
+import com.opendroid.ai.core.linux.LinuxRuntimeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -15,27 +16,22 @@ data class TerminalSessionInfo(
 
 @Singleton
 class PersistentTerminalManager @Inject constructor(
-    private val commandExecutor: PrivilegedCommandExecutor
+    private val linuxRuntime: LinuxRuntimeManager
 ) {
-
     private val sessions = ConcurrentHashMap<String, Process>()
-    private val backends = ConcurrentHashMap<String, CommandBackend>()
 
     suspend fun create(): TerminalSessionInfo = withContext(Dispatchers.IO) {
-        val (backend, process) = commandExecutor.startShell()
+        val process = linuxRuntime.startShell()
         val id = UUID.randomUUID().toString()
         sessions[id] = process
-        backends[id] = backend
-        TerminalSessionInfo(id, backend)
+        TerminalSessionInfo(id, CommandBackend.INTEGRATED_LINUX)
     }
 
     suspend fun write(id: String, command: String) = withContext(Dispatchers.IO) {
         require(command.length <= MAX_COMMAND_LENGTH) { "Command is too long" }
         val process = requireSession(id)
-        // Write bytes directly so we never close the process's long-lived output stream.
-        val stream = process.outputStream
-        stream.write((command + "\n").toByteArray(Charsets.UTF_8))
-        stream.flush()
+        process.outputStream.write((command + "\n").toByteArray(Charsets.UTF_8))
+        process.outputStream.flush()
     }
 
     suspend fun read(id: String): String = withContext(Dispatchers.IO) {
@@ -45,18 +41,18 @@ class PersistentTerminalManager @Inject constructor(
         output.toString()
     }
 
-    fun list(): List<TerminalSessionInfo> = sessions.keys().asSequence().map { id ->
-        TerminalSessionInfo(id, backends[id] ?: CommandBackend.UNAVAILABLE)
-    }.toList()
+    fun list(): List<TerminalSessionInfo> = sessions.keys().asSequence()
+        .map { TerminalSessionInfo(it, CommandBackend.INTEGRATED_LINUX) }
+        .toList()
 
     fun close(id: String) {
-        sessions.remove(id)?.destroy()
-        backends.remove(id)
+        sessions.remove(id)?.let { process ->
+            process.destroy()
+            if (process.isAlive) process.destroyForcibly()
+        }
     }
 
-    fun closeAll() {
-        sessions.keys().toList().forEach(::close)
-    }
+    fun closeAll() = sessions.keys().toList().forEach(::close)
 
     private fun requireSession(id: String): Process = sessions[id]
         ?: throw IllegalArgumentException("Unknown terminal session: $id")
@@ -76,14 +72,7 @@ class PersistentTerminalManager @Inject constructor(
                     }
                 }
             }
-            if (!readAny) {
-                try {
-                    Thread.sleep(READ_POLL_INTERVAL_MS)
-                } catch (_: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    return
-                }
-            }
+            if (!readAny) Thread.sleep(READ_POLL_INTERVAL_MS)
         }
     }
 
