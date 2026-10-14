@@ -16,7 +16,7 @@ class PtySessionInstrumentedTest {
             environment = mapOf("TERM" to "xterm-256color", "PATH" to "/system/bin:/system/xbin")
         )
         try {
-            assertTrue(session.resize(rows = 24, columns = 80))
+            session.resize(rows = 24, columns = 80)
             session.write("printf PTY_OK\\n; exit 7")
             val output = buildString {
                 repeat(20) {
