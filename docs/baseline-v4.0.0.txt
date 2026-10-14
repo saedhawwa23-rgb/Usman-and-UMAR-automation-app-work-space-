@@ -70,3 +70,14 @@ Unresolved blockers and next corrective actions
 4. Re-run Gradle tests/lint/build, review the APK, obtain authorized release signing, push the feature branch, and create/update a new PR without merging main.
 
 Statuses: BUILD_ENV_INCOMPLETE; ANDROID_SDK_INSTALL_BLOCKED; NDK_BUILD_BLOCKED; APK_NOT_PRODUCED; PHYSICAL_DEVICE_UNVERIFIED; SIGNING_KEY_MISSING; AUDIT_INCOMPLETE.
+
+
+PR #4 follow-up evidence (2026-10-14)
+- PR: https://github.com/umarashebir-cpu/usman-and-umar/pull/4
+- Workflow run: 38600382573
+- Branch/base verified: feature/integrated-linux-terminal -> main; PR HEAD 58457f1e09285ee5e63572546e5688e9ee729596; PR remained OPEN and MERGEABLE.
+- CI result before correction: FAIL across debug/unit, lint, API 28 instrumentation, API 36 instrumentation, and unsigned release jobs.
+- Root cause: the new INTEGRATED_LINUX enum member made existing PrivilegedCommandExecutor when expressions non-exhaustive. CI reported the exact Kotlin errors at lines 34 and 53 and returned exit code 1.
+- Correction: added an explicit non-privileged result for direct executor calls and a guarded error for attempts to start integrated sessions through the privileged executor. PersistentTerminalManager remains the integrated-session owner.
+- CI additions: debug APK metadata/SHA-256 artifact capture, reproducible PRoot commit/link2symlink verification, official Alpine ARMv7 checksum verification, and archive traversal listing checks.
+- Current status after correction: awaiting the new CI run; no new build, test, APK, or device success is claimed until completed evidence is available.

@@ -54,6 +54,15 @@ jobs:
       - name: Run unit tests and build debug APK
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
 
+      - name: Inspect debug APK
+        run: |
+          apk=$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)
+          test -n "$apk"
+          sha256sum "$apk" | tee app/build/outputs/apk/debug/SHA256SUMS.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump packagename "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -E "package:|native-code"
+          unzip -l "$apk" | grep -E 'lib/|META-INF/' || true
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,6 +70,17 @@ jobs:
           name: test-reports
           path: app/build/reports/tests/
           if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload debug APK evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-armv7
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/SHA256SUMS.txt
+          if-no-files-found: error
           retention-days: 14
 
   lint:
@@ -210,3 +230,25 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
+
+  runtime-provenance:
+    name: PRoot and Alpine provenance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify pinned PRoot source and link2symlink option
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/termux/proot.git /tmp/proot
+          test "$(git -C /tmp/proot rev-parse HEAD)" = "b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087"
+          grep -R --line-number -- '--link2symlink' /tmp/proot/src/cli/proot.c /tmp/proot/src/cli/proot.h
+          grep -R --line-number 'extension/link2symlink/link2symlink.o' /tmp/proot/src/GNUmakefile
+      - name: Verify official Alpine ARMv7 archive checksum
+        shell: bash
+        run: |
+          base=https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/armv7
+          curl --fail --silent --show-error --location "$base/alpine-minirootfs-3.24.2-armv7.tar.gz.sha256" -o /tmp/alpine.sha256
+          grep -F '5552f1ef2398cee46ef2cf733f8f1258f39a77ad065dfd47282fc0df9fe1976c  alpine-minirootfs-3.24.2-armv7.tar.gz' /tmp/alpine.sha256
+          curl --fail --silent --show-error --location "$base/alpine-minirootfs-3.24.2-armv7.tar.gz" -o /tmp/alpine.tar.gz
+          sha256sum -c /tmp/alpine.sha256
+          tar -tzf /tmp/alpine.tar.gz >/tmp/alpine.members
+          ! grep -E '(^/|(^|/)\.\./|(^|/)\.\.$)' /tmp/alpine.members
