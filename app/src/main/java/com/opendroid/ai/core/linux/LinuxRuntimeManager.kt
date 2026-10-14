@@ -1,6 +1,7 @@
 package com.opendroid.ai.core.linux
 
 import android.content.Context
+import com.opendroid.ai.core.pty.PtySession
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,25 +47,29 @@ class LinuxRuntimeManager @Inject constructor(
         else -> RuntimeStatus.READY
     }
 
-    fun startShell(): Process {
+    fun startShell(): PtySession {
         check(status() == RuntimeStatus.READY) {
             "Integrated Linux is not ready. Install the verified ARM32 PRoot runtime and Alpine rootfs first."
         }
         val home = rootfsDir.resolve("home/usman").apply { mkdirs() }
-        return ProcessBuilder(
-            prootFile.absolutePath,
-            "--link2symlink",
-            "-0",
-            "-r", rootfsDir.absolutePath,
-            "-b", "/dev:/dev",
-            "-b", "/proc:/proc",
-            "-b", "${context.filesDir.absolutePath}:/android-app",
-            "/bin/sh", "-l"
-        ).directory(home).redirectErrorStream(false).apply {
-            environment()["HOME"] = "/home/usman"
-            environment()["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-            environment()["TERM"] = "xterm-256color"
-        }.start()
+        return PtySession.start(
+            executable = prootFile.absolutePath,
+            arguments = arrayOf(
+                "--link2symlink",
+                "-0",
+                "-r", rootfsDir.absolutePath,
+                "-b", "/dev:/dev",
+                "-b", "/proc:/proc",
+                "-b", "${context.filesDir.absolutePath}:/android-app",
+                "/bin/sh", "-l"
+            ),
+            workingDirectory = home.absolutePath,
+            environment = mapOf(
+                "HOME" to "/home/usman",
+                "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "TERM" to "xterm-256color"
+            )
+        )
     }
 
     private fun configureRepositories() {
