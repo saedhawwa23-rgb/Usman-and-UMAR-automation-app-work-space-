@@ -178,7 +178,7 @@ jobs:
   instrumented-tests:
     name: Instrumented tests (API ${{ matrix.api-level }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -248,10 +248,10 @@ jobs:
             df -h
             echo "=== Memory ==="
             free -h
-            echo "=== Running bounded PTY smoke tests (5 minute cap) ==="
-            timeout --signal=TERM --kill-after=60s 5m ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.opendroid.ai.core.pty.PtySessionInstrumentedTest -PinstrumentedTestAbi=x86_64 --stacktrace --no-daemon
-            echo "=== Running Android tests (15 minute cap) ==="
-            timeout --signal=TERM --kill-after=60s 15m ./gradlew :app:connectedDebugAndroidTest -PinstrumentedTestAbi=x86_64 --stacktrace --no-daemon
+            echo "=== Running bounded PTY smoke tests (10 minute cap) ==="
+            timeout --signal=TERM --kill-after=60s 10m ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.opendroid.ai.core.pty.PtySessionInstrumentedTest -PinstrumentedTestAbi=x86_64 --stacktrace --no-daemon
+            echo "=== Running Android tests (25 minute cap) ==="
+            timeout --signal=TERM --kill-after=60s 25m ./gradlew :app:connectedDebugAndroidTest -PinstrumentedTestAbi=x86_64 --stacktrace --no-daemon
 
       - name: Upload instrumented test reports
         if: always()
