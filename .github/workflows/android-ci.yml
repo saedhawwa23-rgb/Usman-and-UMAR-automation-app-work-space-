@@ -51,6 +51,37 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Install ARM32 cross-compilation toolchain
+        run: |
+          sudo dpkg --add-architecture armhf
+          sudo tee /etc/apt/sources.list.d/armhf-ports.list >/dev/null <<'EOF'
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports noble main universe
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports noble-security main universe
+          EOF
+          sudo apt-get update || true
+          sudo apt-get install -y gcc-arm-linux-gnueabihf libseccomp-dev:armhf libtalloc-dev:armhf pkg-config
+
+      - name: Cross-compile and package pinned PRoot for ARM32
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/proot
+          git clone https://github.com/termux/proot.git /tmp/proot
+          git -C /tmp/proot checkout --quiet b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087
+          make -C /tmp/proot/src -j"$(nproc)" \
+            CROSS_COMPILE=arm-linux-gnueabihf- \
+            CC=arm-linux-gnueabihf-gcc \
+            STRIP=arm-linux-gnueabihf-strip \
+            CFLAGS='-marm -DARM_cpsr=uregs[16] -DPSR_T_BIT=0x00000020' \
+            LDFLAGS="-static -ltalloc -Wl,-z,noexecstack"
+          file /tmp/proot/src/proot | tee /tmp/proot-file.txt
+          grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-file.txt
+          mkdir -p app/src/main/assets/proot
+          cp /tmp/proot/src/proot app/src/main/assets/proot/proot
+          chmod 755 app/src/main/assets/proot/proot
+          ls -la app/src/main/assets/proot/
+
       - name: Run unit tests and build debug APK
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
 
@@ -62,6 +93,18 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump packagename "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -E "package:|native-code"
           unzip -l "$apk" | grep -E 'lib/|META-INF/' || true
+
+      - name: Verify PRoot in debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          unzip -l "$APK" | grep -F 'assets/proot/proot'
+          unzip -p "$APK" assets/proot/proot > /tmp/proot-from-apk
+          file /tmp/proot-from-apk | tee /tmp/proot-apk-file.txt
+          grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-apk-file.txt
+          chmod 755 /tmp/proot-from-apk
+          sha256sum /tmp/proot-from-apk | tee app/build/outputs/apk/debug/PROOT_SHA256SUM.txt
 
       - name: Upload test reports
         if: always()
@@ -80,6 +123,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/debug/SHA256SUMS.txt
+            app/build/outputs/apk/debug/PROOT_SHA256SUM.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -234,6 +278,36 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Install ARM32 cross-compilation toolchain
+        run: |
+          sudo dpkg --add-architecture armhf
+          sudo tee /etc/apt/sources.list.d/armhf-ports.list >/dev/null <<'EOF'
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports noble main universe
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe
+          deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports noble-security main universe
+          EOF
+          sudo apt-get update || true
+          sudo apt-get install -y gcc-arm-linux-gnueabihf libseccomp-dev:armhf libtalloc-dev:armhf pkg-config
+
+      - name: Cross-compile and package pinned PRoot for ARM32
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/proot
+          git clone https://github.com/termux/proot.git /tmp/proot
+          git -C /tmp/proot checkout --quiet b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087
+          make -C /tmp/proot/src -j"$(nproc)" \
+            CROSS_COMPILE=arm-linux-gnueabihf- \
+            CC=arm-linux-gnueabihf-gcc \
+            STRIP=arm-linux-gnueabihf-strip \
+            CFLAGS='-marm -DARM_cpsr=uregs[16] -DPSR_T_BIT=0x00000020' \
+            LDFLAGS="-static -ltalloc -Wl,-z,noexecstack"
+          file /tmp/proot/src/proot | tee /tmp/proot-file.txt
+          grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-file.txt
+          mkdir -p app/src/main/assets/proot
+          cp /tmp/proot/src/proot app/src/main/assets/proot/proot
+          chmod 755 app/src/main/assets/proot/proot
 
       # No signing secrets in CI. -PallowUnsignedRelease builds an unsigned,
       # uninstallable APK purely to exercise R8/ProGuard, which debug builds

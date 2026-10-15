@@ -11,6 +11,7 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,6 +31,7 @@ class LinuxRuntimeManager @Inject constructor(
     val prootFile: File get() = File(rootDir, PROOT_NAME)
     private val archiveFile: File get() = File(rootDir, ROOTFS_ARCHIVE)
     private val stateFile: File get() = File(rootDir, STATE_FILE)
+    private val prootVerificationFile: File get() = File(rootDir, PROOT_VERIFIED_STATE)
 
     suspend fun install(progress: (Long, Long) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
         rootDir.mkdirs()
@@ -38,16 +40,19 @@ class LinuxRuntimeManager @Inject constructor(
         safeExtract(temporaryArchive, rootfsDir)
         temporaryArchive.delete()
         configureRepositories()
+        extractAndVerifyProot()
         stateFile.writeText("$ROOTFS_VERSION\n$ROOTFS_SHA256\n", Charsets.UTF_8)
     }
 
     fun status(): RuntimeStatus = when {
         !rootfsDir.resolve("bin/sh").isFile -> RuntimeStatus.NOT_INSTALLED
-        !prootFile.isFile || !prootFile.canExecute() -> RuntimeStatus.PROOT_MISSING
+        !prootFile.isFile || !prootFile.canExecute() ||
+            prootVerificationFile.readTextOrNull() != PROOT_COMMIT -> RuntimeStatus.PROOT_MISSING
         else -> RuntimeStatus.READY
     }
 
     fun startShell(): PtySession {
+        extractAndVerifyProot()
         check(status() == RuntimeStatus.READY) {
             "Integrated Linux is not ready. Install the verified ARM32 PRoot runtime and Alpine rootfs first."
         }
@@ -70,6 +75,33 @@ class LinuxRuntimeManager @Inject constructor(
                 "TERM" to "xterm-256color"
             )
         )
+    }
+
+    /** Copies the packaged executable into app-private storage and verifies that it runs. */
+    private fun extractAndVerifyProot(): File {
+        rootDir.mkdirs()
+        if (!prootFile.isFile || prootFile.length() == 0L) {
+            val temporary = File(rootDir, "$PROOT_NAME.part")
+            context.assets.open(PROOT_ASSET).use { input ->
+                FileOutputStream(temporary).use { output -> input.copyTo(output) }
+            }
+            check(temporary.renameTo(prootFile)) { "Could not install packaged PRoot executable" }
+        }
+        check(prootFile.setExecutable(true, false) || prootFile.canExecute()) {
+            "Failed to set executable permission on PRoot"
+        }
+        val process = ProcessBuilder(prootFile.absolutePath, PROOT_REQUIRED_OPTION, "--version")
+            .redirectErrorStream(true)
+            .start()
+        val finished = process.waitFor(PROOT_EXECUTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        if (!finished) process.destroyForcibly()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        check(finished && process.exitValue() == 0) {
+            prootVerificationFile.delete()
+            "Packaged PRoot did not execute successfully: $output"
+        }
+        prootVerificationFile.writeText(PROOT_COMMIT, Charsets.UTF_8)
+        return prootFile
     }
 
     private fun configureRepositories() {
@@ -141,11 +173,14 @@ class LinuxRuntimeManager @Inject constructor(
         const val PROOT_SOURCE = "https://github.com/termux/proot"
         const val PROOT_COMMIT = "b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087"
         const val PROOT_REQUIRED_OPTION = "--link2symlink"
+        private const val PROOT_ASSET = "proot/proot"
+        private const val PROOT_EXECUTION_TIMEOUT_SECONDS = 5L
         private const val RUNTIME_DIR = "linux-runtime"
         private const val ROOTFS_DIR = "alpine-armv7"
         private const val ROOTFS_ARCHIVE = "alpine-minirootfs-3.24.2-armv7.tar.gz"
         private const val PROOT_NAME = "proot-armv7"
         private const val STATE_FILE = "install.state"
+        private const val PROOT_VERIFIED_STATE = "proot.verified"
     }
 }
 
@@ -160,3 +195,6 @@ object SafeArchivePath {
             !normalized.contains('\u0000')
     }
 }
+
+private fun File.readTextOrNull(): String? =
+    if (isFile) runCatching { readText(Charsets.UTF_8) }.getOrNull() else null
