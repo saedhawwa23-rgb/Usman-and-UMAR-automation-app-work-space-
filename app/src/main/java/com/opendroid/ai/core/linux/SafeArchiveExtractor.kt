@@ -98,7 +98,13 @@ internal object SafeArchiveExtractor {
             guestPath = SafeArchivePath.normalizeEntry(entry.name)
             hostDestination = hostRoot.resolve(guestPath).normalize()
             SafeArchivePath.requireContained(hostRoot, hostDestination, "archive entry")
-            if (guestPath.toString() == "." && entry.type == '5') return
+            if (entry.type == '5' && SafeArchivePath.isRootEntry(guestPath)) {
+                // `.` and `./` normalize to an empty relative Path on Android/JVM.
+                // The intended destination is the staging root itself; it has no
+                // parent inside the root that should be checked.
+                Files.createDirectories(hostRoot)
+                return
+            }
 
             stage = "host-parent-validation"
             requireNoSymlinkParents(hostRoot, hostDestination.parent)
@@ -273,6 +279,9 @@ internal object SafeArchivePath {
         }
         return path
     }
+
+    fun isRootEntry(path: Path): Boolean =
+        path.nameCount == 1 && (path.toString().isEmpty() || path.toString() == ".")
 
     fun resolveLinkTarget(
         link: Path,

@@ -41,6 +41,30 @@ class LinuxRuntimeManagerTest {
         )
     }
 
+    @Test
+    fun `root directory entry resolves to staging root without parent escape`() {
+        val parent = Files.createTempDirectory("alpine-root-entry-test").toFile()
+        val archive = File(parent, "root-entry.tar.gz")
+        val destination = File(parent, "rootfs")
+        try {
+            writeTar(archive) {
+                directory("./")
+                directory("bin/")
+                file("bin/sh", "#!/bin/sh\n")
+                file("etc-release", "Alpine\n")
+            }
+            val normalizedRoot = destination.toPath().toAbsolutePath().normalize()
+            assertTrue(SafeArchivePath.isRootEntry(SafeArchivePath.normalizeEntry(".")))
+            assertTrue(SafeArchivePath.isRootEntry(SafeArchivePath.normalizeEntry("./")))
+            SafeArchivePath.requireContained(normalizedRoot, normalizedRoot, "archive entry")
+            SafeArchiveExtractor.extract(archive, destination)
+            assertTrue(destination.resolve("bin/sh").isFile)
+            assertEquals("Alpine\n", destination.resolve("etc-release").readText())
+        } finally {
+            parent.deleteRecursively()
+        }
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `deep relative symlink escape is rejected`() {
         SafeArchivePath.resolveLinkTarget(Path.of("evil/link"), "../../../../../../etc/passwd")
