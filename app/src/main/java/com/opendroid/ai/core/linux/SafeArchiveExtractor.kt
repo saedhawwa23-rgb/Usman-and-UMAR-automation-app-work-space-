@@ -61,7 +61,6 @@ internal object SafeArchiveExtractor {
                 output.parent?.let { Files.createDirectories(it) }
                 FileOutputStream(output.toFile()).use { out -> entry.copyDataTo(out) }
                 output.toFile().setExecutable(entry.mode and 0x49 != 0, false)
-                output.toFile().setReadable(true, false)
             }
             else -> throw IOException("Unsupported Alpine archive entry type: ${entry.type}")
         }
