@@ -347,3 +347,16 @@ jobs:
           (cd /tmp/alpine-check && sha256sum -c alpine.sha256)
           tar -tzf /tmp/alpine-check/alpine-minirootfs-3.24.2-armv7.tar.gz >/tmp/alpine.members
           ! grep -E '(^/|(^|/)\.\./|(^|/)\.\.$)' /tmp/alpine.members
+          python3 - <<'PY'
+          import posixpath
+          import tarfile
+          archive = '/tmp/alpine-check/alpine-minirootfs-3.24.2-armv7.tar.gz'
+          with tarfile.open(archive, 'r:gz') as tf:
+              links = {member.name: member.linkname for member in tf if member.issym()}
+          assert links['./var/spool/cron/crontabs'] == '../../../etc/crontabs'
+          resolved = posixpath.normpath(posixpath.join(
+              posixpath.dirname('./var/spool/cron/crontabs'),
+              links['./var/spool/cron/crontabs']))
+          assert resolved == 'etc/crontabs', resolved
+          print('VALID_ALPINE_SYMLINK=./var/spool/cron/crontabs -> ../../../etc/crontabs => root/etc/crontabs')
+          PY

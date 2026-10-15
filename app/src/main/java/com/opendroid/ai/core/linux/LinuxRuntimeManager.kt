@@ -152,18 +152,9 @@ class LinuxRuntimeManager @Inject constructor(
     }
 
     private fun safeExtract(archive: File, destination: File) {
-        require(archive.isFile && archive.length() > 0) { "Downloaded rootfs archive is missing or empty" }
-        destination.deleteRecursively()
-        destination.mkdirs()
-        // Android's toybox tar is available on the target API level. Validate every
-        // member before extraction so a corrupt archive cannot escape app-private storage.
-        val list = ProcessBuilder("tar", "-tzf", archive.absolutePath).redirectErrorStream(true).start()
-        val names = list.inputStream.bufferedReader().readLines()
-        check(list.waitFor() == 0) { "Could not inspect Alpine archive" }
-        names.forEach { name -> check(SafeArchivePath.isSafe(name)) { "Unsafe archive path: $name" } }
-        val extract = ProcessBuilder("tar", "-xzf", archive.absolutePath, "-C", destination.absolutePath).redirectErrorStream(true).start()
-        val output = extract.inputStream.bufferedReader().readText()
-        check(extract.waitFor() == 0) { "Alpine extraction failed: $output" }
+        // Extract into a sibling staging directory. A failed download or archive
+        // validation must not destroy a previously working rootfs or user data.
+        SafeArchiveExtractor.extract(archive, destination)
     }
 
     companion object {
