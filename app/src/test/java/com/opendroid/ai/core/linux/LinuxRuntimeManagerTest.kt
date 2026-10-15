@@ -76,6 +76,7 @@ class LinuxRuntimeManagerTest {
             SafeArchiveExtractor.extract(archive, destination)
             assertTrue(Files.isSymbolicLink(destination.toPath().resolve("var/spool/cron/crontabs")))
             assertEquals("# root\n", destination.resolve("etc/crontabs/root").readText())
+            destination.resolve("user-project.txt").writeText("preserve me")
 
             val conflicting = File(parent, "conflict.tar.gz")
             writeTar(conflicting) {
@@ -85,6 +86,7 @@ class LinuxRuntimeManagerTest {
             }
             runCatching { SafeArchiveExtractor.extract(conflicting, destination) }.getOrThrowFailure()
             assertFalse(File(parent, "outside/pwned").exists())
+            assertEquals("preserve me", destination.resolve("user-project.txt").readText())
         } finally {
             parent.deleteRecursively()
         }

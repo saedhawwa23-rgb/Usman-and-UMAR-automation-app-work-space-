@@ -177,15 +177,5 @@ class LinuxRuntimeManager @Inject constructor(
 
 enum class RuntimeStatus { NOT_INSTALLED, PROOT_MISSING, READY }
 
-object SafeArchivePath {
-    fun isSafe(name: String): Boolean {
-        val normalized = name.replace('\\', '/')
-        return normalized.isNotEmpty() &&
-            !normalized.startsWith('/') &&
-            normalized.split('/').none { it == ".." } &&
-            !normalized.contains('\u0000')
-    }
-}
-
 private fun File.readTextOrNull(): String? =
     if (isFile) runCatching { readText(Charsets.UTF_8) }.getOrNull() else null

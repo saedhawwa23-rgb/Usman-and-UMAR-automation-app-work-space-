@@ -5,6 +5,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -97,7 +98,7 @@ internal object SafeArchiveExtractor {
         fun copyDataTo(output: FileOutputStream) = input.copy(size, output)
     }
 
-    private class TarReader(private val input: BufferedInputStream) {
+    private class TarReader(private val input: InputStream) {
         fun forEachEntry(consumer: (TarEntry) -> Unit) {
             while (true) {
                 val header = ByteArray(BLOCK_SIZE)
