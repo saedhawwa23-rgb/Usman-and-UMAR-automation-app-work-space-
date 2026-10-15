@@ -30,6 +30,17 @@ class LinuxRuntimeManagerTest {
         assertEquals(Path.of("etc/crontabs"), resolved)
     }
 
+    @Test
+    fun `trusted Alpine guest absolute link is remapped to a guest relative link`() {
+        val link = Path.of("etc/ssl1.1/certs")
+        val resolved = SafeArchivePath.resolveLinkTarget(link, "/etc/ssl/certs", true)
+        assertEquals(Path.of("etc/ssl/certs"), resolved)
+        assertEquals(
+            Path.of("../ssl/certs"),
+            SafeArchivePath.materializeLinkTarget(link, "/etc/ssl/certs", resolved)
+        )
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `deep relative symlink escape is rejected`() {
         SafeArchivePath.resolveLinkTarget(Path.of("evil/link"), "../../../../../../etc/passwd")
@@ -51,7 +62,13 @@ class LinuxRuntimeManagerTest {
                 symlink("etc/redirect", "../../outside")
                 file("etc/redirect/pwned", "must not be written")
             }
-            runCatching { SafeArchiveExtractor.extract(archive, destination) }.getOrThrowFailure()
+            val failure = runCatching { SafeArchiveExtractor.extract(archive, destination) }.exceptionOrNull()
+            assertTrue(failure is ArchiveExtractionException)
+            val diagnostic = failure as ArchiveExtractionException
+            assertEquals("etc/redirect", diagnostic.entryName)
+            assertTrue(diagnostic.hostDestination!!.contains("rootfs.staging-"))
+            assertTrue(diagnostic.hostRoot.contains("rootfs.staging-"))
+            assertEquals("guest-symlink-validation", diagnostic.stage)
             assertFalse(File(parent, "outside/pwned").exists())
         } finally {
             parent.deleteRecursively()
@@ -87,6 +104,68 @@ class LinuxRuntimeManagerTest {
             runCatching { SafeArchiveExtractor.extract(conflicting, destination) }.getOrThrowFailure()
             assertFalse(File(parent, "outside/pwned").exists())
             assertEquals("preserve me", destination.resolve("user-project.txt").readText())
+        } finally {
+            parent.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `host staging path with dot segments remains inside its own root`() {
+        val parent = Files.createTempDirectory("alpine-extractor-test").toFile()
+        val archive = File(parent, "normalized.tar.gz")
+        val nested = File(parent, "nested").apply { mkdirs() }
+        val destination = File(nested, "../rootfs")
+        try {
+            writeTar(archive) {
+                directory("bin/")
+                file("bin/sh", "#!/bin/sh\n")
+            }
+            SafeArchiveExtractor.extract(archive, destination)
+            assertTrue(destination.resolve("bin/sh").isFile)
+        } finally {
+            parent.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `trusted guest absolute link is extracted without leaving host staging`() {
+        val parent = Files.createTempDirectory("alpine-extractor-test").toFile()
+        val archive = File(parent, "official-link.tar.gz")
+        val destination = File(parent, "rootfs")
+        try {
+            writeTar(archive) {
+                directory("bin/")
+                file("bin/sh", "#!/bin/sh\n")
+                directory("etc/")
+                directory("etc/ssl1.1/")
+                symlink("etc/ssl1.1/certs", "/etc/ssl/certs")
+            }
+            SafeArchiveExtractor.extract(archive, destination, allowTrustedGuestAbsoluteLinks = true)
+            assertEquals(
+                Path.of("../ssl/certs"),
+                Files.readSymbolicLink(destination.toPath().resolve("etc/ssl1.1/certs"))
+            )
+        } finally {
+            parent.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `selected Alpine archive extracts with guest link semantics`() {
+        val archivePath = System.getProperty("alpine.archive") ?: return
+        val parent = Files.createTempDirectory("alpine-real-archive-test").toFile()
+        try {
+            val destination = File(parent, "rootfs")
+            SafeArchiveExtractor.extract(File(archivePath), destination, allowTrustedGuestAbsoluteLinks = true)
+            assertTrue(destination.resolve("bin/sh").isFile)
+            assertEquals(
+                Path.of("../../../etc/crontabs"),
+                Files.readSymbolicLink(destination.toPath().resolve("var/spool/cron/crontabs"))
+            )
+            assertEquals(
+                Path.of("../ssl/certs"),
+                Files.readSymbolicLink(destination.toPath().resolve("etc/ssl1.1/certs"))
+            )
         } finally {
             parent.deleteRecursively()
         }

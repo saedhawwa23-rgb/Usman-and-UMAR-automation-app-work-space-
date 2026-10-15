@@ -1,6 +1,7 @@
 package com.opendroid.ai.core.linux
 
 import android.content.Context
+import android.util.Log
 import com.opendroid.ai.core.pty.PtySession
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -36,12 +37,17 @@ class LinuxRuntimeManager @Inject constructor(
     suspend fun install(progress: (Long, Long) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
         rootDir.mkdirs()
         val temporaryArchive = File(rootDir, "$ROOTFS_ARCHIVE.part")
-        downloadVerified(ROOTFS_URL, ROOTFS_SHA256, temporaryArchive, progress)
-        safeExtract(temporaryArchive, rootfsDir)
-        temporaryArchive.delete()
-        configureRepositories()
-        extractAndVerifyProot()
-        stateFile.writeText("$ROOTFS_VERSION\n$ROOTFS_SHA256\n", Charsets.UTF_8)
+        try {
+            downloadVerified(ROOTFS_URL, ROOTFS_SHA256, temporaryArchive, progress)
+            safeExtract(temporaryArchive, rootfsDir)
+            temporaryArchive.delete()
+            configureRepositories()
+            extractAndVerifyProot()
+            stateFile.writeText("$ROOTFS_VERSION\n$ROOTFS_SHA256\n", Charsets.UTF_8)
+        } catch (failure: Throwable) {
+            Log.e(TAG, "Alpine installation failed", failure)
+            throw failure
+        }
     }
 
     fun status(): RuntimeStatus = when {
@@ -154,7 +160,11 @@ class LinuxRuntimeManager @Inject constructor(
     private fun safeExtract(archive: File, destination: File) {
         // Extract into a sibling staging directory. A failed download or archive
         // validation must not destroy a previously working rootfs or user data.
-        SafeArchiveExtractor.extract(archive, destination)
+        SafeArchiveExtractor.extract(
+            archive = archive,
+            destination = destination,
+            allowTrustedGuestAbsoluteLinks = true
+        )
     }
 
     companion object {
@@ -172,6 +182,7 @@ class LinuxRuntimeManager @Inject constructor(
         private const val PROOT_NAME = "proot-armv7"
         private const val STATE_FILE = "install.state"
         private const val PROOT_VERIFIED_STATE = "proot.verified"
+        private const val TAG = "LinuxRuntimeManager"
     }
 }
 

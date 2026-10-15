@@ -82,8 +82,15 @@ jobs:
           chmod 755 app/src/main/assets/proot/proot
           ls -la app/src/main/assets/proot/
 
+      - name: Download pinned Alpine archive for extraction regression
+        run: |
+          set -euo pipefail
+          base=https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/armv7
+          curl --fail --silent --show-error --location "$base/alpine-minirootfs-3.24.2-armv7.tar.gz" -o /tmp/alpine-minirootfs-3.24.2-armv7.tar.gz
+          printf '%s  %s\n' '5552f1ef2398cee46ef2cf733f8f1258f39a77ad065dfd47282fc0df9fe1976c' /tmp/alpine-minirootfs-3.24.2-armv7.tar.gz | sha256sum -c -
+
       - name: Run unit tests and build debug APK
-        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+        run: ./gradlew -Dalpine.archive=/tmp/alpine-minirootfs-3.24.2-armv7.tar.gz testDebugUnitTest assembleDebug --stacktrace
 
       - name: Inspect debug APK
         run: |
@@ -358,5 +365,8 @@ jobs:
               posixpath.dirname('./var/spool/cron/crontabs'),
               links['./var/spool/cron/crontabs']))
           assert resolved == 'etc/crontabs', resolved
+          assert links['./etc/ssl1.1/certs'] == '/etc/ssl/certs'
+          assert links['./etc/ssl1.1/cert.pem'] == '/etc/ssl/cert.pem'
+          print('TRUSTED_GUEST_ABSOLUTE_LINKS=/etc/ssl/certs,/etc/ssl/cert.pem')
           print('VALID_ALPINE_SYMLINK=./var/spool/cron/crontabs -> ../../../etc/crontabs => root/etc/crontabs')
           PY

@@ -13,62 +13,141 @@ import java.nio.file.Paths
 import java.util.zip.GZIPInputStream
 
 /**
- * Extracts the small Alpine minirootfs tarball without delegating writes to a
- * host tar implementation. Every archive path and symlink is checked before
- * anything is written, and all writes happen in a staging directory.
+ * Extracts an Alpine minirootfs while keeping guest archive paths separate from
+ * Android host filesystem paths.
  */
 internal object SafeArchiveExtractor {
-    fun extract(archive: File, destination: File) {
-        require(archive.isFile && archive.length() > 0) { "Downloaded rootfs archive is missing or empty" }
-        val staging = File(destination.parentFile, "${destination.name}.part")
-        staging.deleteRecursively()
-        staging.mkdirs()
+    /**
+     * [allowTrustedGuestAbsoluteLinks] is enabled only after LinuxRuntimeManager
+     * has verified the pinned Alpine archive checksum. Such links are converted
+     * to root-relative links; they are never created as host-absolute links.
+     */
+    fun extract(
+        archive: File,
+        destination: File,
+        allowTrustedGuestAbsoluteLinks: Boolean = false
+    ) {
+        require(archive.isFile && archive.length() > 0) {
+            "Downloaded rootfs archive is missing or empty"
+        }
+        val parent = destination.parentFile ?: throw IOException("Rootfs destination has no parent")
+        val staging = Files.createTempDirectory(
+            parent.toPath(),
+            "${destination.name}.staging-"
+        ).toFile()
         try {
             GZIPInputStream(BufferedInputStream(FileInputStream(archive))).use { input ->
-                TarReader(input).forEachEntry { entry -> extractEntry(entry, staging.toPath()) }
+                TarReader(input).forEachEntry { entry ->
+                    extractEntry(entry, staging.toPath(), allowTrustedGuestAbsoluteLinks)
+                }
             }
-            if (destination.exists() && !Files.isSymbolicLink(destination.toPath())) {
-                destination.deleteRecursively()
-            } else if (destination.exists()) {
-                throw IOException("Rootfs destination is a symbolic link")
+            check(staging.resolve("bin/sh").isFile) {
+                "Extracted Alpine rootfs is missing bin/sh"
             }
-            check(staging.renameTo(destination)) { "Could not activate extracted Alpine rootfs" }
+            activate(staging, destination)
         } catch (failure: Throwable) {
             staging.deleteRecursively()
             throw failure
         }
     }
 
-    private fun extractEntry(entry: TarEntry, root: Path) {
-        val relative = SafeArchivePath.normalizeEntry(entry.name)
-        val output = root.resolve(relative).normalize()
-        SafeArchivePath.requireContained(root, output, "archive entry")
-        if (relative.toString() == "." && entry.type == '5') return
-        requireNoSymlinkParents(root, output.parent)
-        if (Files.exists(output, LinkOption.NOFOLLOW_LINKS)) {
-            throw IOException("Conflicting archive entry: ${entry.name}")
+    private fun activate(staging: File, destination: File) {
+        val backup = File(
+            destination.parentFile,
+            "${destination.name}.backup-${System.nanoTime()}"
+        )
+        var backedUp = false
+        try {
+            if (destination.exists()) {
+                if (Files.isSymbolicLink(destination.toPath())) {
+                    throw IOException("Rootfs destination is a symbolic link")
+                }
+                check(destination.renameTo(backup)) {
+                    "Could not stage the existing Alpine rootfs for replacement"
+                }
+                backedUp = true
+            }
+            check(staging.renameTo(destination)) {
+                "Could not activate extracted Alpine rootfs"
+            }
+            if (backedUp) backup.deleteRecursively()
+        } catch (failure: Throwable) {
+            if (destination.exists() && !Files.isSymbolicLink(destination.toPath())) {
+                destination.deleteRecursively()
+            }
+            if (backedUp && !destination.exists()) {
+                check(backup.renameTo(destination)) {
+                    "Could not restore the previous Alpine rootfs after activation failure"
+                }
+            }
+            throw failure
+        } finally {
+            if (backup.exists() && destination.exists()) backup.deleteRecursively()
         }
+    }
 
-        when (entry.type) {
-            '5' -> Files.createDirectories(output)
-            '2' -> {
-                val target = SafeArchivePath.resolveLinkTarget(relative, entry.linkName)
-                val targetPath = root.resolve(target).normalize()
-                SafeArchivePath.requireContained(root, targetPath, "symbolic-link target")
-                Files.createSymbolicLink(output, entry.linkName.toPathString())
+    private fun extractEntry(
+        entry: TarEntry,
+        hostRoot: Path,
+        allowTrustedGuestAbsoluteLinks: Boolean
+    ) {
+        var stage = "guest-path-validation"
+        var guestPath: Path? = null
+        var hostDestination: Path? = null
+        try {
+            guestPath = SafeArchivePath.normalizeEntry(entry.name)
+            hostDestination = hostRoot.resolve(guestPath).normalize()
+            SafeArchivePath.requireContained(hostRoot, hostDestination, "archive entry")
+            if (guestPath.toString() == "." && entry.type == '5') return
+
+            stage = "host-parent-validation"
+            requireNoSymlinkParents(hostRoot, hostDestination.parent)
+            if (Files.exists(hostDestination, LinkOption.NOFOLLOW_LINKS)) {
+                throw IOException("Conflicting archive entry: ${entry.name}")
             }
-            '0', '\u0000' -> {
-                output.parent?.let { Files.createDirectories(it) }
-                FileOutputStream(output.toFile()).use { out -> entry.copyDataTo(out) }
-                output.toFile().setExecutable(entry.mode and 0x49 != 0, false)
+
+            when (entry.type) {
+                '5' -> Files.createDirectories(hostDestination)
+                '2' -> {
+                    stage = "guest-symlink-validation"
+                    val linkTarget = SafeArchivePath.resolveLinkTarget(
+                        guestPath,
+                        entry.linkName,
+                        allowTrustedGuestAbsoluteLinks
+                    )
+                    val hostTarget = hostRoot.resolve(linkTarget).normalize()
+                    SafeArchivePath.requireContained(hostRoot, hostTarget, "symbolic-link target")
+                    val safeLinkText = SafeArchivePath.materializeLinkTarget(
+                        guestPath,
+                        entry.linkName,
+                        linkTarget
+                    )
+                    Files.createSymbolicLink(hostDestination, safeLinkText)
+                }
+                '0', '\u0000' -> {
+                    stage = "host-file-write"
+                    hostDestination.parent?.let { Files.createDirectories(it) }
+                    FileOutputStream(hostDestination.toFile()).use { out -> entry.copyDataTo(out) }
+                    hostDestination.toFile().setExecutable(entry.mode and 0x49 != 0, false)
+                }
+                else -> throw IOException("Unsupported Alpine archive entry type: ${entry.type}")
             }
-            else -> throw IOException("Unsupported Alpine archive entry type: ${entry.type}")
+        } catch (failure: ArchiveExtractionException) {
+            throw failure
+        } catch (failure: Throwable) {
+            throw ArchiveExtractionException(
+                entryName = entry.name,
+                hostDestination = hostDestination?.toString(),
+                hostRoot = hostRoot.toAbsolutePath().normalize().toString(),
+                stage = stage,
+                cause = failure
+            )
         }
     }
 
     private fun requireNoSymlinkParents(root: Path, parent: Path?) {
-        var current = parent ?: return
-        val normalizedRoot = root.normalize()
+        val normalizedRoot = root.toAbsolutePath().normalize()
+        var current = parent?.toAbsolutePath()?.normalize() ?: return
         val missing = java.util.ArrayDeque<Path>()
         while (current != normalizedRoot) {
             SafeArchivePath.requireContained(normalizedRoot, current, "archive parent")
@@ -164,6 +243,23 @@ internal object SafeArchiveExtractor {
     }
 }
 
+internal class ArchiveExtractionException(
+    val entryName: String,
+    val hostDestination: String?,
+    val hostRoot: String,
+    val stage: String,
+    cause: Throwable
+) : IOException(
+    buildString {
+        append("Archive entry rejected: ").append(stage)
+        append("; entry: ").append(entryName)
+        if (hostDestination != null) append("; host: ").append(hostDestination)
+        append("; root: ").append(hostRoot)
+        append("; cause: ").append(cause.message ?: cause::class.java.simpleName)
+    },
+    cause
+)
+
 internal object SafeArchivePath {
     fun isSafe(name: String): Boolean = runCatching { normalizeEntry(name); true }.getOrDefault(false)
 
@@ -171,25 +267,44 @@ internal object SafeArchivePath {
         require(name.isNotEmpty() && !name.contains('\u0000')) { "Archive path is empty or contains NUL" }
         val normalized = name.replace('\\', '/')
         require(!normalized.startsWith('/')) { "Absolute archive path: $name" }
-        val withoutPrefix = normalized.removePrefix("./")
-        val path = withoutPrefix.toPathString().normalize()
+        val path = normalized.toPathString().normalize()
         require(!path.isAbsolute && path.nameCount > 0 && path.first().toString() != "..") {
             "Archive path escapes rootfs: $name"
         }
         return path
     }
 
-    fun resolveLinkTarget(link: Path, target: String): Path {
+    fun resolveLinkTarget(
+        link: Path,
+        target: String,
+        allowTrustedGuestAbsoluteLinks: Boolean = false
+    ): Path {
         require(target.isNotEmpty() && !target.contains('\u0000')) { "Invalid symbolic-link target" }
-        val targetPath = target.replace('\\', '/').toPathString()
-        require(!targetPath.isAbsolute) { "Absolute symbolic-link target: $target" }
+        val normalizedTarget = target.replace('\\', '/')
+        val targetPath = normalizedTarget.toPathString()
+        val guestAbsolute = targetPath.isAbsolute
+        require(!guestAbsolute || allowTrustedGuestAbsoluteLinks) {
+            "Absolute symbolic-link target: $target"
+        }
+        val guestTarget = if (guestAbsolute) {
+            Paths.get(normalizedTarget.removePrefix("/"))
+        } else {
+            targetPath
+        }
         val parent = link.parent ?: Paths.get("")
-        val resolved = parent.resolve(targetPath).normalize()
+        val resolved = if (guestAbsolute) guestTarget else parent.resolve(guestTarget).normalize()
         require(!resolved.isAbsolute && resolved.nameCount > 0 && resolved.first().toString() != "..") {
             "Symbolic-link target escapes rootfs: $target"
         }
         return resolved
     }
+
+    fun materializeLinkTarget(link: Path, original: String, resolved: Path): Path =
+        if (original.replace('\\', '/').startsWith('/')) {
+            (link.parent ?: Paths.get("")).relativize(resolved)
+        } else {
+            original.toPathString()
+        }
 
     fun requireContained(root: Path, candidate: Path, what: String) {
         val rootPath = root.toAbsolutePath().normalize()
