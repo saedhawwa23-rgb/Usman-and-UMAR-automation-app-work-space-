@@ -9,6 +9,7 @@ import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.zip.GZIPInputStream
 
 /**
@@ -183,7 +184,7 @@ internal object SafeArchivePath {
         require(target.isNotEmpty() && !target.contains('\u0000')) { "Invalid symbolic-link target" }
         val targetPath = target.replace('\\', '/').toPathString()
         require(!targetPath.isAbsolute) { "Absolute symbolic-link target: $target" }
-        val parent = link.parent ?: Path.of("")
+        val parent = link.parent ?: Paths.get("")
         val resolved = parent.resolve(targetPath).normalize()
         require(!resolved.isAbsolute && resolved.nameCount > 0 && resolved.first().toString() != "..") {
             "Symbolic-link target escapes rootfs: $target"
@@ -200,4 +201,4 @@ internal object SafeArchivePath {
     }
 }
 
-private fun String.toPathString(): Path = Path.of(this)
+private fun String.toPathString(): Path = Paths.get(this)
