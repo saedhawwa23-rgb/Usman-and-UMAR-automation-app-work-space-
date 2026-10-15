@@ -182,7 +182,7 @@ jobs:
           # The release APK remains armeabi-v7a-only; CI uses an x86_64 test
           # APK because GitHub-hosted emulators cannot execute ARM-only APKs.
           script: |
-            set -euxo pipefail
+            set -eu
             echo "=== ADB devices ==="
             adb devices -l
             echo "=== Waiting for an online ADB device (5 minute cap) ==="
