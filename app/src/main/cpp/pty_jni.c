@@ -203,7 +203,16 @@ Java_com_opendroid_ai_core_pty_PtyNative_nativeClose(
     if (exit_code == -1) {
         kill(session->pid, SIGHUP);
         kill(session->pid, SIGTERM);
-        waitpid(session->pid, NULL, 0);
+        for (int attempt = 0; attempt < 100; attempt++) {
+            int status = 0;
+            pid_t result = waitpid(session->pid, &status, WNOHANG);
+            if (result == session->pid || (result < 0 && errno == ECHILD)) break;
+            usleep(20 * 1000);
+        }
+        if (waitpid(session->pid, NULL, WNOHANG) == 0) {
+            kill(session->pid, SIGKILL);
+            waitpid(session->pid, NULL, 0);
+        }
     }
     if (session->master_fd >= 0) close(session->master_fd);
     free(session);

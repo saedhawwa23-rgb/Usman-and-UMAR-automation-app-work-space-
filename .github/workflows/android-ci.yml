@@ -127,6 +127,7 @@ jobs:
   instrumented-tests:
     name: Instrumented tests (API ${{ matrix.api-level }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -170,17 +171,36 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
-          target: ${{ matrix.api-level >= 30 && 'google_apis' || 'default' }}
+          target: google_apis
           force-avd-creation: true
           cores: 4
           ram-size: 4096M
           emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
-          emulator-boot-timeout: 1200
+          emulator-boot-timeout: 600
           disable-spellchecker: true
           disable-animations: true
           # The release APK remains armeabi-v7a-only; CI uses an x86_64 test
           # APK because GitHub-hosted emulators cannot execute ARM-only APKs.
-          script: ./gradlew :app:connectedDebugAndroidTest -PinstrumentedTestAbi=x86_64 --stacktrace
+          script: |
+            set -euxo pipefail
+            echo "=== ADB devices ==="
+            adb devices -l
+            echo "=== Waiting for an online ADB device (5 minute cap) ==="
+            timeout --signal=TERM --kill-after=30s 5m bash -c 'until adb get-state 2>/dev/null | grep -qx device; do sleep 2; done'
+            echo "=== Emulator status ==="
+            adb shell getprop sys.boot_completed
+            echo "=== Waiting for sys.boot_completed (5 minute cap) ==="
+            timeout --signal=TERM --kill-after=30s 5m bash -c 'until test "$(adb shell getprop sys.boot_completed | tr -d "\r")" = 1; do sleep 2; done'
+            echo "=== ADB devices after boot ==="
+            adb devices -l
+            echo "=== Free disk ==="
+            df -h
+            echo "=== Memory ==="
+            free -h
+            echo "=== Running bounded PTY smoke tests (5 minute cap) ==="
+            timeout --signal=TERM --kill-after=60s 5m ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.opendroid.ai.core.pty.PtySessionInstrumentedTest -PinstrumentedTestAbi=x86_64 --stacktrace --no-daemon
+            echo "=== Running Android tests (15 minute cap) ==="
+            timeout --signal=TERM --kill-after=60s 15m ./gradlew :app:connectedDebugAndroidTest -PinstrumentedTestAbi=x86_64 --stacktrace --no-daemon
 
       - name: Upload instrumented test reports
         if: always()
