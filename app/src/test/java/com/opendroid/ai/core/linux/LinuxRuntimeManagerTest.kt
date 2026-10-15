@@ -82,6 +82,8 @@ class LinuxRuntimeManagerTest {
         val destination = File(parent, "rootfs")
         try {
             writeTar(archive) {
+                directory("bin/")
+                file("bin/sh", "#!/bin/sh\n")
                 directory("etc/")
                 directory("var/")
                 directory("var/spool/")
