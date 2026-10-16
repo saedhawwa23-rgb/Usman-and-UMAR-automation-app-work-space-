@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -33,7 +34,6 @@ class GitHubIntegration @Inject constructor(
     private val client: OkHttpClient,
     private val tokenStore: GitHubTokenStore
 ) {
-    private val gson = Gson()
     private val api = "https://api.github.com".toHttpUrl()
 
     fun isConfigured(): Boolean = BuildConfig.GITHUB_CLIENT_ID.isNotBlank()
@@ -46,7 +46,7 @@ class GitHubIntegration @Inject constructor(
         val request = Request.Builder().url("https://github.com/login/device/code").post(body)
             .header("Accept", "application/json").header("User-Agent", USER_AGENT).build()
         client.newCall(request).execute().use { response ->
-            val json = response.body.string().asJson()
+            val json = response.body.string().asJsonObject()
             if (!response.isSuccessful) throw failure("device authorization", response.code, json)
             GitHubDeviceCode(
                 userCode = json.string("user_code"),
@@ -63,7 +63,7 @@ class GitHubIntegration @Inject constructor(
         val request = Request.Builder().url("https://github.com/login/oauth/access_token").post(body)
             .header("Accept", "application/json").header("User-Agent", USER_AGENT).build()
         client.newCall(request).execute().use { response ->
-            val json = response.body.string().asJson()
+            val json = response.body.string().asJsonObject()
             val error = json.stringOrNull("error")
             when {
                 error == "authorization_pending" -> GitHubDevicePoll.Pending(code.intervalSeconds)
@@ -96,7 +96,7 @@ class GitHubIntegration @Inject constructor(
 
     suspend fun files(owner: String, repo: String, path: String = ""): List<GitHubFile> = withContext(Dispatchers.IO) {
         val url = api.newBuilder().addPathSegment("repos").addPathSegment(owner).addPathSegment(repo).addPathSegment("contents")
-            .apply { if (path.isNotBlank()) path.trim('/').split('/').forEach(::addPathSegment) }.build()
+            .apply { if (path.isNotBlank()) path.trim('/').split('/').forEach { addPathSegment(it) } }.build()
         client.newCall(authenticatedRequest(url).get().build()).execute().use { response ->
             val raw = response.body.string().asJson()
             ensureSuccess(response.code, "file listing", raw)
@@ -110,10 +110,10 @@ class GitHubIntegration @Inject constructor(
 
     suspend fun readFile(owner: String, repo: String, path: String, ref: String? = null): GitHubFile = withContext(Dispatchers.IO) {
         val builder = api.newBuilder().addPathSegment("repos").addPathSegment(owner).addPathSegment(repo).addPathSegment("contents")
-        path.trim('/').split('/').forEach(builder::addPathSegment)
+        path.trim('/').split('/').forEach { builder.addPathSegment(it) }
         ref?.let { builder.addQueryParameter("ref", it) }
         client.newCall(authenticatedRequest(builder.build()).get().build()).execute().use { response ->
-            val obj = response.body.string().asJson()
+            val obj = response.body.string().asJsonObject()
             ensureSuccess(response.code, "file inspection", obj)
             val encoded = obj.stringOrNull("content").orEmpty().filterNot(Char::isWhitespace)
             val content = encoded.takeIf { it.isNotBlank() }?.let { String(Base64.getDecoder().decode(it), Charsets.UTF_8).take(MAX_FILE_CHARS) }
