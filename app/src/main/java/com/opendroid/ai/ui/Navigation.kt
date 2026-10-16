@@ -58,6 +58,7 @@ object OpenDroidRoutes {
     const val SOCIAL = "social"
     const val DISCOVERY = "discovery"
     const val GITHUB_DISCOVERY = "github_discovery"
+    const val GITHUB_WORKSPACE = "github_workspace"
     const val TERMUX = "termux"
     const val UNIVERSAL_AGENT = "universal_agent"
 }
@@ -180,6 +181,9 @@ fun OpenDroidNavigation(
                 },
                 onNavigateToGitHubDiscovery = {
                     navController.navigate(OpenDroidRoutes.GITHUB_DISCOVERY)
+                },
+                onNavigateToGitHubWorkspace = {
+                    navController.navigate(OpenDroidRoutes.GITHUB_WORKSPACE)
                 },
                 onNavigateToTermux = {
                     navController.navigate(OpenDroidRoutes.TERMUX)
@@ -308,6 +312,13 @@ fun OpenDroidNavigation(
             )
         }
 
+        composable(OpenDroidRoutes.GITHUB_WORKSPACE) {
+            GitHubWorkspaceScreen(
+                viewModel = hiltViewModel(),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(OpenDroidRoutes.TERMUX) {
             IntegratedTerminalScreen(
                 viewModel = hiltViewModel(),
@@ -347,6 +358,7 @@ fun MainDashboard(
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToDiscovery: () -> Unit = {},
     onNavigateToGitHubDiscovery: () -> Unit = {},
+    onNavigateToGitHubWorkspace: () -> Unit = {},
     onNavigateToTermux: () -> Unit = {},
     onNavigateToUniversalAgent: () -> Unit = {},
 ) {
@@ -469,6 +481,7 @@ fun MainDashboard(
                     Screen.Tools -> CapabilitiesScreen(
                         onSearchAI = onNavigateToDiscovery,
                         onSearchGitHub = onNavigateToGitHubDiscovery,
+                        onGitHubWorkspace = onNavigateToGitHubWorkspace,
                         onTermux = onNavigateToTermux,
                         onUniversalAgent = onNavigateToUniversalAgent
                     )
@@ -492,6 +505,7 @@ fun MainDashboard(
                         onNavigateToRoutines = onNavigateToRoutines,
                         onNavigateToDiscovery = onNavigateToDiscovery,
                         onNavigateToGitHubDiscovery = onNavigateToGitHubDiscovery,
+                        onNavigateToGitHubWorkspace = onNavigateToGitHubWorkspace,
                         onNavigateToTermux = onNavigateToTermux
                     )
                 }

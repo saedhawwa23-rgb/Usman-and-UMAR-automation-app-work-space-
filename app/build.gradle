@@ -17,8 +17,12 @@ android {
         applicationId "com.usmanandumar.app"
         minSdk 28
         targetSdk 34
-        versionCode 23
-        versionName "3.0.0-cloud-ai"
+        versionCode 24
+        versionName "3.0.1-cloud-ai"
+        // OAuth client IDs are public identifiers; client secrets must never ship in the APK.
+        // Supply -PGITHUB_CLIENT_ID for a configured release, otherwise the workspace explains
+        // that authentication is not configured rather than pretending to authenticate.
+        buildConfigField "String", "GITHUB_CLIENT_ID", "\"${project.findProperty('GITHUB_CLIENT_ID') ?: ''}\""
 
         // Release/device builds target the Samsung Galaxy M10's 32-bit ARM ABI.
         // CI instrumentation explicitly overrides this to x86_64 because the

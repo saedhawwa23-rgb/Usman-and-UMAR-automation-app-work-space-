@@ -74,6 +74,7 @@ fun SettingsScreen(
     onNavigateToRoutines: () -> Unit = {},
     onNavigateToDiscovery: () -> Unit = {},
     onNavigateToGitHubDiscovery: () -> Unit = {},
+    onNavigateToGitHubWorkspace: () -> Unit = {},
     onNavigateToTermux: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {

@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.opendroid.ai.core.pty.PtySession
+import com.opendroid.ai.core.security.GitHubTokenStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,7 +33,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class LinuxRuntimeManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val githubTokenStore: GitHubTokenStore
 ) {
     val rootDir: File get() = File(context.filesDir, RUNTIME_DIR)
     val rootfsDir: File get() = File(rootDir, ROOTFS_DIR)
@@ -99,6 +101,8 @@ class LinuxRuntimeManager @Inject constructor(
             "Integrated Linux is not ready. Install the verified ARM32 PRoot runtime and Alpine rootfs first."
         }
         val home = rootfsDir.resolve("home/usman").apply { mkdirs() }
+        val gitAskPass = prepareGitAskPass()
+        val githubToken = githubTokenStore.read()
         return try {
             PtySession.start(
                 executable = prootFile.absolutePath,
@@ -115,8 +119,11 @@ class LinuxRuntimeManager @Inject constructor(
                 environment = mapOf(
                     "HOME" to "/home/usman",
                     "PATH" to "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                    "TERM" to "xterm-256color"
-                )
+                    "TERM" to "xterm-256color",
+                    "GIT_ASKPASS" to gitAskPass,
+                    "GIT_USERNAME" to "x-access-token",
+                    "GIT_TERMINAL_PROMPT" to "0"
+                ) + githubToken?.let { mapOf("GITHUB_TOKEN" to it) }.orEmpty()
             )
         } catch (failure: Throwable) {
             lastInstallStage = "shell-process-launch"
@@ -126,6 +133,15 @@ class LinuxRuntimeManager @Inject constructor(
                 failure
             )
         }
+    }
+
+    private fun prepareGitAskPass(): String {
+        val helper = File(context.filesDir, GIT_ASKPASS_FILE)
+        if (!helper.exists()) {
+            helper.writeText("#!/bin/sh\nprintf '%s' \"\$GITHUB_TOKEN\"\n", Charsets.UTF_8)
+            helper.setExecutable(true, false)
+        }
+        return "/android-app/$GIT_ASKPASS_FILE"
     }
 
     /**
@@ -160,6 +176,8 @@ class LinuxRuntimeManager @Inject constructor(
             appendLine("supportedAbis=${Build.SUPPORTED_ABIS.joinToString(",")}")
             appendLine("nativeLibraryDir=${context.applicationInfo.nativeLibraryDir}")
             appendLine("resolvedProotPath=${prootFile.absolutePath}")
+            appendLine("prootPathPolicy=PACKAGED_NATIVE_LIBRARY_ONLY")
+            appendLine("legacyWritableProotPathRejected=${rootDir.resolve("proot-armv7").absolutePath}")
             appendLine("prootExpectedSha256=$PROOT_SHA256")
             appendLine("prootCommit=$PROOT_COMMIT")
             appendLine("prootRequiredOption=$PROOT_REQUIRED_OPTION")
@@ -193,6 +211,9 @@ class LinuxRuntimeManager @Inject constructor(
             prootVerificationFile.readTextOrNull() == PROOT_COMMIT
 
     private fun ensureProotReady() {
+        check(prootFile.parentFile?.canonicalFile != rootDir.canonicalFile) {
+            "Refusing to execute PRoot from writable linux-runtime storage"
+        }
         val result = verifyProotExecutable()
         if (!result.success) {
             throw IllegalStateException(
@@ -379,6 +400,7 @@ class LinuxRuntimeManager @Inject constructor(
         private const val PROOT_NAME = "libproot.so"
         private const val STATE_FILE = "install.state"
         private const val PROOT_VERIFIED_STATE = "proot.verified"
+        private const val GIT_ASKPASS_FILE = ".github-askpass"
         private const val TAG = "LinuxRuntimeManager"
     }
 }
