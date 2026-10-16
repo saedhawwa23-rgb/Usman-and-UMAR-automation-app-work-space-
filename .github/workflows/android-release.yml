@@ -98,7 +98,7 @@ jobs:
           test "$(sha256sum /tmp/proot-from-apk | awk '{print $1}')" = '6ef736d86c8b9a6de61e8b417876594f9d8ad294a7d10b56110e4632cd2e6be7'
           unzip -Z -v "$apk" | grep -A2 -F 'lib/armeabi-v7a/libproot.so'
           cp "$apk" "$out/usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk"
-          sha256sum "$out/usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk" | tee "$out/SHA256SUMS.txt"
+          (cd "$out" && sha256sum usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk) | tee "$out/SHA256SUMS.txt"
           printf 'commit=%s\nref=%s\ntag=%s\n' "$(git rev-parse HEAD)" "${{ inputs.ref }}" "${{ inputs.tag }}" > "$out/BUILD_METADATA.txt"
 
       - name: Publish GitHub Release
