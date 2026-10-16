@@ -10,7 +10,11 @@ on:
       tag:
         description: GitHub Release tag to create
         required: true
-        default: v3.0.0-cloud-ai-pr4
+        default: v3.0.0-cloud-ai-pr4-fix3
+      github_client_id:
+        description: Public GitHub OAuth App Client ID (never a client secret)
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -71,7 +75,7 @@ jobs:
           chmod 755 app/src/main/jniLibs/armeabi-v7a/libproot.so
 
       - name: Run unit tests and build debug APK
-        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace -PGITHUB_CLIENT_ID='${{ inputs.github_client_id }}'
 
       - name: Verify package, ABI, signature, and checksums
         id: build-meta
@@ -83,7 +87,7 @@ jobs:
           out=dist
           mkdir -p "$out"
           test "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump packagename "$apk")" = "com.usmanandumar.app"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -F "versionName='3.0.0-cloud-ai'"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -F "versionName='3.0.1-cloud-ai'"
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -F "native-code: 'armeabi-v7a'"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk" | tee "$out/SIGNING_STATUS.txt"
           unzip -l "$apk" | grep -F 'lib/armeabi-v7a/libproot.so'
@@ -93,8 +97,8 @@ jobs:
           sha256sum /tmp/proot-from-apk | tee "$out/PROOT_SHA256SUM.txt"
           test "$(sha256sum /tmp/proot-from-apk | awk '{print $1}')" = '6ef736d86c8b9a6de61e8b417876594f9d8ad294a7d10b56110e4632cd2e6be7'
           unzip -Z -v "$apk" | grep -A2 -F 'lib/armeabi-v7a/libproot.so'
-          cp "$apk" "$out/usman-and-umar-v3.0.0-cloud-ai-pr4.apk"
-          sha256sum "$out/usman-and-umar-v3.0.0-cloud-ai-pr4.apk" | tee "$out/SHA256SUMS.txt"
+          cp "$apk" "$out/usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk"
+          sha256sum "$out/usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk" | tee "$out/SHA256SUMS.txt"
           printf 'commit=%s\nref=%s\ntag=%s\n' "$(git rev-parse HEAD)" "${{ inputs.ref }}" "${{ inputs.tag }}" > "$out/BUILD_METADATA.txt"
 
       - name: Publish GitHub Release
@@ -107,7 +111,7 @@ jobs:
 
             Commit: `${{ steps.build-meta.outputs.commit }}`
             Package: `com.usmanandumar.app`
-            Version: `3.0.0-cloud-ai`
+            Version: `3.0.1-cloud-ai`
             ABI: `armeabi-v7a`
 
             Physical Samsung Galaxy M10 runtime verification remains separate and is not claimed by this release.
