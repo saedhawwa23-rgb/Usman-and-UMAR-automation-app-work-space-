@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.opendroid.ai.data.repository.GitHubRepoSummary
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.GitHubWorkspaceViewModel
@@ -62,7 +63,7 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                     Button(onClick = viewModel::beginLogin, enabled = !busy) { Text("START GITHUB LOGIN") }
                     deviceCode?.let { code ->
                         Text("Code: ${code.userCode}", fontWeight = FontWeight.Bold)
-                        OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(code.verificationUri))) }) { Text("OPEN ${code.verificationUri}") }
+                        OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, code.verificationUri.toUri())) }) { Text("OPEN ${code.verificationUri}") }
                         Button(onClick = viewModel::pollLogin, enabled = !busy) { Text("I AUTHORIZED — CHECK") }
                     }
                 } else {
