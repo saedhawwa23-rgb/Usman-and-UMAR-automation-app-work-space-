@@ -143,6 +143,12 @@ android {
     }
     // `packagingOptions` was removed in AGP 9; `packaging` is the supported name.
     packaging {
+        jniLibs {
+            // PRoot is packaged as an executable native-library entry and is
+            // launched from ApplicationInfo.nativeLibraryDir, not loaded by JNI.
+            useLegacyPackaging = true
+            keepDebugSymbols += ['**/libproot.so']
+        }
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }

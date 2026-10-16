@@ -66,9 +66,9 @@ jobs:
             LDFLAGS="-static -ltalloc -Wl,-z,noexecstack"
           file /tmp/proot/src/proot | tee /tmp/proot-file.txt
           grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-file.txt
-          mkdir -p app/src/main/assets/proot
-          cp /tmp/proot/src/proot app/src/main/assets/proot/proot
-          chmod 755 app/src/main/assets/proot/proot
+          mkdir -p app/src/main/jniLibs/armeabi-v7a
+          cp /tmp/proot/src/proot app/src/main/jniLibs/armeabi-v7a/libproot.so
+          chmod 755 app/src/main/jniLibs/armeabi-v7a/libproot.so
 
       - name: Run unit tests and build debug APK
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
@@ -86,11 +86,13 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -F "versionName='3.0.0-cloud-ai'"
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" | grep -F "native-code: 'armeabi-v7a'"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk" | tee "$out/SIGNING_STATUS.txt"
-          unzip -l "$apk" | grep -F 'assets/proot/proot'
-          unzip -p "$apk" assets/proot/proot > /tmp/proot-from-apk
+          unzip -l "$apk" | grep -F 'lib/armeabi-v7a/libproot.so'
+          unzip -p "$apk" lib/armeabi-v7a/libproot.so > /tmp/proot-from-apk
           file /tmp/proot-from-apk | tee "$out/PROOT_ELF.txt"
           grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' "$out/PROOT_ELF.txt"
           sha256sum /tmp/proot-from-apk | tee "$out/PROOT_SHA256SUM.txt"
+          test "$(sha256sum /tmp/proot-from-apk | awk '{print $1}')" = '6ef736d86c8b9a6de61e8b417876594f9d8ad294a7d10b56110e4632cd2e6be7'
+          unzip -Z -v "$apk" | grep -A2 -F 'lib/armeabi-v7a/libproot.so'
           cp "$apk" "$out/usman-and-umar-v3.0.0-cloud-ai-pr4.apk"
           sha256sum "$out/usman-and-umar-v3.0.0-cloud-ai-pr4.apk" | tee "$out/SHA256SUMS.txt"
           printf 'commit=%s\nref=%s\ntag=%s\n' "$(git rev-parse HEAD)" "${{ inputs.ref }}" "${{ inputs.tag }}" > "$out/BUILD_METADATA.txt"

@@ -77,10 +77,10 @@ jobs:
             LDFLAGS="-static -ltalloc -Wl,-z,noexecstack"
           file /tmp/proot/src/proot | tee /tmp/proot-file.txt
           grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-file.txt
-          mkdir -p app/src/main/assets/proot
-          cp /tmp/proot/src/proot app/src/main/assets/proot/proot
-          chmod 755 app/src/main/assets/proot/proot
-          ls -la app/src/main/assets/proot/
+          mkdir -p app/src/main/jniLibs/armeabi-v7a
+          cp /tmp/proot/src/proot app/src/main/jniLibs/armeabi-v7a/libproot.so
+          chmod 755 app/src/main/jniLibs/armeabi-v7a/libproot.so
+          ls -la app/src/main/jniLibs/armeabi-v7a/
 
       - name: Download pinned Alpine archive for extraction regression
         run: |
@@ -106,12 +106,13 @@ jobs:
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
-          unzip -l "$APK" | grep -F 'assets/proot/proot'
-          unzip -p "$APK" assets/proot/proot > /tmp/proot-from-apk
+          unzip -l "$APK" | grep -F 'lib/armeabi-v7a/libproot.so'
+          unzip -p "$APK" lib/armeabi-v7a/libproot.so > /tmp/proot-from-apk
           file /tmp/proot-from-apk | tee /tmp/proot-apk-file.txt
           grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-apk-file.txt
-          chmod 755 /tmp/proot-from-apk
           sha256sum /tmp/proot-from-apk | tee app/build/outputs/apk/debug/PROOT_SHA256SUM.txt
+          test "$(sha256sum /tmp/proot-from-apk | awk '{print $1}')" = '6ef736d86c8b9a6de61e8b417876594f9d8ad294a7d10b56110e4632cd2e6be7'
+          unzip -Z -v "$APK" | grep -A2 -F 'lib/armeabi-v7a/libproot.so'
 
       - name: Upload test reports
         if: always()
@@ -312,9 +313,9 @@ jobs:
             LDFLAGS="-static -ltalloc -Wl,-z,noexecstack"
           file /tmp/proot/src/proot | tee /tmp/proot-file.txt
           grep -E 'ELF 32-bit.*ARM.*EABI5.*statically linked' /tmp/proot-file.txt
-          mkdir -p app/src/main/assets/proot
-          cp /tmp/proot/src/proot app/src/main/assets/proot/proot
-          chmod 755 app/src/main/assets/proot/proot
+          mkdir -p app/src/main/jniLibs/armeabi-v7a
+          cp /tmp/proot/src/proot app/src/main/jniLibs/armeabi-v7a/libproot.so
+          chmod 755 app/src/main/jniLibs/armeabi-v7a/libproot.so
 
       # No signing secrets in CI. -PallowUnsignedRelease builds an unsigned,
       # uninstallable APK purely to exercise R8/ProGuard, which debug builds

@@ -203,6 +203,10 @@ class LinuxRuntimeManagerTest {
         assertTrue(LinuxRuntimeManager.ROOTFS_SHA256.matches(Regex("[0-9a-f]{64}")))
         assertTrue(LinuxRuntimeManager.PROOT_COMMIT.matches(Regex("[0-9a-f]{40}")))
         assertTrue(LinuxRuntimeManager.PROOT_REQUIRED_OPTION == "--link2symlink")
+        assertEquals(
+            "6ef736d86c8b9a6de61e8b417876594f9d8ad294a7d10b56110e4632cd2e6be7",
+            LinuxRuntimeManager.PROOT_SHA256
+        )
     }
 
     private fun writeTar(file: File, block: TarWriter.() -> Unit) {
