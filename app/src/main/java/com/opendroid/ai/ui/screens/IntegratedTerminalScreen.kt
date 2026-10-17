@@ -40,12 +40,17 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
     val output by viewModel.output.collectAsState()
     val message by viewModel.message.collectAsState()
     val diagnostics by viewModel.diagnostics.collectAsState()
+    val termuxAvailable by viewModel.termuxAvailable.collectAsState()
+    val termuxStatus by viewModel.termuxStatus.collectAsState()
     val context = LocalContext.current
     var command by remember { mutableStateOf("echo USMAN_AND_UMAR_TERMINAL_OK") }
     var showDiagnostics by remember { mutableStateOf(false) }
     var copyAfterRefresh by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { viewModel.diagnostics() }
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+        viewModel.diagnostics()
+    }
     LaunchedEffect(diagnostics, copyAfterRefresh) {
         if (copyAfterRefresh && diagnostics.isNotBlank()) {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -90,6 +95,19 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
                     Button(onClick = { viewModel.send(command) }, modifier = Modifier.weight(1f), enabled = status == RuntimeStatus.READY) { Text("RUN") }
                     OutlinedButton(onClick = viewModel::clearOutput, modifier = Modifier.weight(1f)) { Text("CLEAR") }
                 }
+            }
+            item {
+                Text("TERMUX COMMAND MODE", fontWeight = FontWeight.Bold, color = AppTheme.colors.textPrimary)
+                Text(
+                    "Fallback for Android seccomp failures such as PRoot exit 159. This runs one bounded command through Termux RUN_COMMAND and returns output/exit code; it is not an interactive PTY.",
+                    color = AppTheme.colors.textSecondary
+                )
+                OutlinedButton(
+                    onClick = { viewModel.runViaTermux(command) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = termuxAvailable
+                ) { Text("RUN COMMAND VIA TERMUX") }
+                Text(termuxStatus, color = AppTheme.colors.textSecondary)
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.opendroid.ai.core.linux.LinuxRuntimeManager
 import com.opendroid.ai.core.linux.RuntimeStatus
 import com.opendroid.ai.core.service.PersistentTerminalManager
+import com.opendroid.ai.core.termux.TermuxIntegration
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LinuxTerminalViewModel @Inject constructor(
     private val runtime: LinuxRuntimeManager,
-    private val sessions: PersistentTerminalManager
+    private val sessions: PersistentTerminalManager,
+    private val termux: TermuxIntegration
 ) : ViewModel() {
     private val _status = MutableStateFlow(runtime.status())
     val status: StateFlow<RuntimeStatus> = _status.asStateFlow()
@@ -27,9 +29,17 @@ class LinuxTerminalViewModel @Inject constructor(
     val message: StateFlow<String?> = _message.asStateFlow()
     private val _diagnostics = MutableStateFlow("")
     val diagnostics: StateFlow<String> = _diagnostics.asStateFlow()
+    private val _termuxAvailable = MutableStateFlow(termux.isCommandExecutionAvailable())
+    val termuxAvailable: StateFlow<Boolean> = _termuxAvailable.asStateFlow()
+    private val _termuxStatus = MutableStateFlow(termux.availabilityMessage())
+    val termuxStatus: StateFlow<String> = _termuxStatus.asStateFlow()
     private var sessionId: String? = null
 
-    fun refresh() { _status.value = runtime.status() }
+    fun refresh() {
+        _status.value = runtime.status()
+        _termuxAvailable.value = termux.isCommandExecutionAvailable()
+        _termuxStatus.value = termux.availabilityMessage()
+    }
 
     fun install() = viewModelScope.launch {
         _message.value = "Downloading and verifying Alpine ARMv7 rootfs…"
@@ -67,6 +77,25 @@ class LinuxTerminalViewModel @Inject constructor(
                 _message.value = it.message ?: "Command failed"
                 diagnostics()
             }
+    }
+
+    fun runViaTermux(command: String) = viewModelScope.launch {
+        _termuxStatus.value = "Starting command in Termux…"
+        runCatching { termux.runShellCommand(command) }
+            .onSuccess { result ->
+                _output.value += buildString {
+                    appendLine("[Termux command ${result.executionId} · exit ${result.exitCode ?: "unknown"}]")
+                    if (result.stdout.isNotBlank()) appendLine(result.stdout)
+                    if (result.stderr.isNotBlank()) appendLine("stderr: ${result.stderr}")
+                    if (result.error != null) appendLine("Termux error: ${result.error}")
+                }
+                _termuxStatus.value = if (result.succeeded) {
+                    "Termux command completed successfully."
+                } else {
+                    "Termux command failed; see output and exit code."
+                }
+            }
+            .onFailure { _termuxStatus.value = it.message ?: "Termux command could not be started." }
     }
 
     fun read() = viewModelScope.launch {
