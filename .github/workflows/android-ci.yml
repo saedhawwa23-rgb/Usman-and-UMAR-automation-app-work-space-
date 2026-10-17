@@ -341,7 +341,10 @@ jobs:
       - name: Verify pinned PRoot source and link2symlink option
         shell: bash
         run: |
-          git clone --depth 1 https://github.com/termux/proot.git /tmp/proot
+          rm -rf /tmp/proot
+          git clone --filter=blob:none --no-checkout https://github.com/termux/proot.git /tmp/proot
+          git -C /tmp/proot fetch --depth=1 origin b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087
+          git -C /tmp/proot checkout --quiet FETCH_HEAD
           test "$(git -C /tmp/proot rev-parse HEAD)" = "b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087"
           grep -R --line-number -- '--link2symlink' /tmp/proot/src/cli/proot.c /tmp/proot/src/cli/proot.h
           grep -R --line-number 'extension/link2symlink/link2symlink.o' /tmp/proot/src/GNUmakefile
