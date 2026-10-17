@@ -10,7 +10,7 @@ on:
       tag:
         description: GitHub Release tag to create
         required: true
-        default: v3.0.0-cloud-ai-pr4-fix3
+        default: v3.0.0-cloud-ai-pr4-fix4
       github_client_id:
         description: Public GitHub OAuth App Client ID (never a client secret)
         required: true
@@ -97,8 +97,9 @@ jobs:
           sha256sum /tmp/proot-from-apk | tee "$out/PROOT_SHA256SUM.txt"
           test "$(sha256sum /tmp/proot-from-apk | awk '{print $1}')" = '6ef736d86c8b9a6de61e8b417876594f9d8ad294a7d10b56110e4632cd2e6be7'
           unzip -Z -v "$apk" | grep -A2 -F 'lib/armeabi-v7a/libproot.so'
-          cp "$apk" "$out/usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk"
-          (cd "$out" && sha256sum usman-and-umar-v3.0.0-cloud-ai-pr4-fix3.apk) | tee "$out/SHA256SUMS.txt"
+          artifact_name="usman-and-umar-${{ inputs.tag }}.apk"
+          cp "$apk" "$out/$artifact_name"
+          (cd "$out" && sha256sum "$artifact_name") | tee "$out/SHA256SUMS.txt"
           printf 'commit=%s\nref=%s\ntag=%s\n' "$(git rev-parse HEAD)" "${{ inputs.ref }}" "${{ inputs.tag }}" > "$out/BUILD_METADATA.txt"
 
       - name: Publish GitHub Release
