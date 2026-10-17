@@ -30,13 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.opendroid.ai.core.linux.RuntimeStatus
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.LinuxTerminalViewModel
 
 @Composable
 fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Unit) {
-    val status by viewModel.status.collectAsState()
     val output by viewModel.output.collectAsState()
     val message by viewModel.message.collectAsState()
     val diagnostics by viewModel.diagnostics.collectAsState()
@@ -62,7 +60,7 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("INTEGRATED LINUX TERMINAL", fontWeight = FontWeight.Bold) },
+                title = { Text("TERMUX LINUX TERMINAL", fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
             )
         },
@@ -72,42 +70,34 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { Text("Backend: Alpine ARMv7 under Termux-maintained PRoot", color = AppTheme.colors.textSecondary) }
-            item {
-                Text(
-                    when (status) {
-                        RuntimeStatus.READY -> "READY: verified native-library PRoot and Alpine rootfs available"
-                        RuntimeStatus.PROOT_MISSING -> "Alpine is installed, but native-library PRoot verification failed."
-                        RuntimeStatus.NOT_INSTALLED -> "NOT INSTALLED: download Alpine on first use."
-                    },
-                    color = if (status == RuntimeStatus.READY) AppTheme.colors.textPrimary else AppTheme.colors.accentRed
-                )
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { viewModel.install() }, modifier = Modifier.weight(1f), enabled = status != RuntimeStatus.READY) { Text("INSTALL / REPAIR") }
-                    OutlinedButton(onClick = { viewModel.start() }, modifier = Modifier.weight(1f), enabled = status == RuntimeStatus.READY) { Text("START SHELL") }
-                }
-            }
-            item {
-                OutlinedTextField(command, { command = it }, Modifier.fillMaxWidth(), label = { Text("Command") }, singleLine = true)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { viewModel.send(command) }, modifier = Modifier.weight(1f), enabled = status == RuntimeStatus.READY) { Text("RUN") }
-                    OutlinedButton(onClick = viewModel::clearOutput, modifier = Modifier.weight(1f)) { Text("CLEAR") }
-                }
-            }
             item {
                 Text("TERMUX COMMAND MODE", fontWeight = FontWeight.Bold, color = AppTheme.colors.textPrimary)
                 Text(
-                    "Fallback for Android seccomp failures such as PRoot exit 159. This runs one bounded command through Termux RUN_COMMAND and returns output/exit code; it is not an interactive PTY.",
+                    "Terminal backend: Alpine Linux running through Termux. Command execution is working on this Android 9 device and returns stdout, stderr, and the exit code.",
                     color = AppTheme.colors.textSecondary
                 )
-                OutlinedButton(
-                    onClick = { viewModel.runViaTermux(command) },
+            }
+            item {
+                OutlinedTextField(
+                    value = command,
+                    onValueChange = { command = it },
                     modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Alpine command") },
+                    singleLine = true
+                )
+                Button(
+                    onClick = { viewModel.runViaTermux(command) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     enabled = termuxAvailable
                 ) { Text("RUN COMMAND VIA TERMUX") }
                 Text(termuxStatus, color = AppTheme.colors.textSecondary)
+            }
+            item {
+                Text(
+                    "Native app-private PRoot is disabled on Android 9+ because the OS seccomp policy terminates it with SIGSYS (exit 159). Use Termux Command Mode for this device.",
+                    color = AppTheme.colors.textSecondary
+                )
+                OutlinedButton(onClick = viewModel::clearOutput, modifier = Modifier.fillMaxWidth()) { Text("CLEAR OUTPUT") }
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

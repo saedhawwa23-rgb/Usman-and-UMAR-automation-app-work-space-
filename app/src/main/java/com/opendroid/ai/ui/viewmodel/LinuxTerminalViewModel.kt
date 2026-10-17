@@ -103,7 +103,16 @@ class LinuxTerminalViewModel @Inject constructor(
     }
 
     fun diagnostics() = viewModelScope.launch {
-        _diagnostics.value = withContext(Dispatchers.IO) { runtime.diagnosticsReport() }
+        _diagnostics.value = withContext(Dispatchers.IO) {
+            buildString {
+                appendLine("TERMUX_RUNTIME=PRIMARY")
+                appendLine("TERMUX_AVAILABLE=${termux.isCommandExecutionAvailable()}")
+                appendLine("TERMUX_VERSION=${termux.versionName() ?: "not installed"}")
+                appendLine("TERMUX_STATUS=${termux.availabilityMessage()}")
+                appendLine("NATIVE_PROOT=DISABLED_ON_ANDROID_9_PLUS")
+                appendLine("NATIVE_PROOT_REASON=Android seccomp terminates app-owned PRoot with SIGSYS/exit 159")
+            }
+        }
     }
 
     fun clearOutput() { _output.value = "" }

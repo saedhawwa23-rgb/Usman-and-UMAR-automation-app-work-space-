@@ -17,7 +17,7 @@ android {
         applicationId "com.usmanandumar.app"
         minSdk 28
         targetSdk 34
-        versionCode 24
+        versionCode 25
         versionName "3.0.1-cloud-ai"
         // OAuth client IDs are public identifiers; client secrets must never ship in the APK.
         // Supply -PGITHUB_CLIENT_ID for a configured release, otherwise the workspace explains
