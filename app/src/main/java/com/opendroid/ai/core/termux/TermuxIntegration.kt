@@ -11,9 +11,11 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -34,6 +36,15 @@ enum class TermuxTask(val label: String, val executable: String, val arguments: 
 }
 
 data class TermuxCommand(val label: String, val executable: String, val arguments: List<String>)
+
+object TermuxVersion {
+    fun atLeast(value: String?, major: Int, minor: Int): Boolean {
+        val parts = value?.split('.')?.mapNotNull { it.takeWhile(Char::isDigit).toIntOrNull() } ?: return false
+        val currentMajor = parts.getOrNull(0) ?: return false
+        val currentMinor = parts.getOrNull(1) ?: 0
+        return currentMajor > major || currentMajor == major && currentMinor >= minor
+    }
+}
 
 /** Only canonical public GitHub repository URLs are accepted; argv is never shell-interpolated. */
 object TermuxGitHubClone {
@@ -97,11 +108,14 @@ class TermuxIntegration @Inject constructor(
         private const val EXTRA_ERROR_MESSAGE = "errmsg"
         private const val EXTRA_EXECUTION_ID = "execution_id"
         private const val MAX_RESULTS = 30
+        private const val MAX_COMMAND_LENGTH = 64 * 1024
+        private const val COMMAND_TIMEOUT_MS = 30_000L
 
         private val nextExecutionId = AtomicInteger(SystemClock.elapsedRealtime().toInt().and(Int.MAX_VALUE).coerceAtLeast(1))
     }
 
     private val pendingTasks = ConcurrentHashMap<Int, TermuxCommand>()
+    private val waiters = ConcurrentHashMap<Int, CompletableDeferred<TermuxResult>>()
     private val _results = MutableStateFlow<List<TermuxResult>>(emptyList())
     val results: StateFlow<List<TermuxResult>> = _results.asStateFlow()
 
@@ -125,6 +139,7 @@ class TermuxIntegration @Inject constructor(
                 exitCode = bundle?.takeIf { error == null }?.getInt(EXTRA_EXIT_CODE),
                 error = error
             )
+            waiters.remove(id)?.complete(result)
             _results.value = (_results.value + result).takeLast(MAX_RESULTS)
         }
     }
@@ -143,6 +158,22 @@ class TermuxIntegration @Inject constructor(
         true
     }.getOrDefault(false)
 
+    fun versionName(): String? = runCatching {
+        context.packageManager.getPackageInfo(TERMUX_PACKAGE, 0).versionName
+    }.getOrNull()
+
+    fun supportsResultCallbacks(): Boolean = TermuxVersion.atLeast(versionName(), 0, 109)
+
+    fun isCommandExecutionAvailable(): Boolean =
+        isInstalled() && supportsResultCallbacks() && hasRunCommandPermission()
+
+    fun availabilityMessage(): String = when {
+        !isInstalled() -> "Termux is not installed."
+        !supportsResultCallbacks() -> "Termux ${versionName() ?: "version"} is too old for captured command results; install Termux 0.109 or later."
+        !hasRunCommandPermission() -> "Grant ‘Run commands in Termux environment’ to USMAN AND UMAR in Android app permissions."
+        else -> "Termux command execution is available. Termux must also have allow-external-apps=true in ~/.termux/termux.properties."
+    }
+
     fun hasRunCommandPermission(): Boolean = ContextCompat.checkSelfPermission(
         context,
         RUN_COMMAND_PERMISSION
@@ -154,18 +185,45 @@ class TermuxIntegration @Inject constructor(
      */
     fun run(task: TermuxTask): Result<Int> = run(TermuxCommand(task.label, task.executable, task.arguments.toList()))
 
+    /**
+     * Runs user-entered shell text through Termux's background RUN_COMMAND API.
+     * This returns a bounded command result and is intentionally not presented as a PTY.
+     */
+    suspend fun runShellCommand(command: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): TermuxResult {
+        require(command.isNotBlank()) { "Enter a command first." }
+        require(command.length <= MAX_COMMAND_LENGTH) { "Command is too long." }
+        check(isCommandExecutionAvailable()) { availabilityMessage() }
+        val task = TermuxCommand("Linux command via Termux", "sh", listOf("-lc", command))
+        val (executionId, waiter) = submit(task)
+        return withTimeoutOrNull(timeoutMs) { waiter.await() }
+            ?: TermuxResult(
+                executionId = executionId,
+                taskLabel = task.label,
+                stdout = "",
+                stderr = "",
+                exitCode = null,
+                error = "Timed out after ${timeoutMs / 1000}s. Check Termux is running, allow-external-apps=true is set, and battery optimization is disabled."
+            ).also { waiters.remove(executionId) }
+    }
+
     fun cloneGitHubRepository(url: String): Result<Int> = runCatching { TermuxGitHubClone.command(url) }
         .fold(onSuccess = ::run, onFailure = { Result.failure(it) })
 
     private fun termuxDataDir(): File = File(context.packageManager.getApplicationInfo(TERMUX_PACKAGE, 0).dataDir)
 
-    private fun run(task: TermuxCommand): Result<Int> = runCatching {
+    private fun run(task: TermuxCommand): Result<Int> = runCatching { submit(task).first }
+
+    private fun submit(task: TermuxCommand): Pair<Int, CompletableDeferred<TermuxResult>> {
         check(isInstalled()) { "Termux is not installed." }
         check(hasRunCommandPermission()) {
             "Grant ‘Run commands in Termux environment’ to USMAN AND UMAR in Android app permissions."
         }
+        check(supportsResultCallbacks()) {
+            "Termux ${versionName() ?: "version"} is too old for captured results; install Termux 0.109 or later."
+        }
 
         val executionId = nextExecutionId.getAndUpdate { if (it >= Int.MAX_VALUE - 1) 1 else it + 1 }
+        val waiter = CompletableDeferred<TermuxResult>()
         val callback = Intent(RESULT_ACTION).setPackage(context.packageName)
             .putExtra(EXTRA_EXECUTION_ID, executionId)
         val flags = PendingIntent.FLAG_ONE_SHOT or
@@ -185,17 +243,24 @@ class TermuxIntegration @Inject constructor(
             putExtra("com.termux.RUN_COMMAND_DESCRIPTION", "Started explicitly by the user from USMAN AND UMAR.")
         }
         pendingTasks[executionId] = task
+        waiters[executionId] = waiter
         try {
             context.startService(command)
         } catch (failure: Throwable) {
             pendingTasks.remove(executionId)
+            waiters.remove(executionId)
             pendingIntent.cancel()
-            throw failure
+            throw IllegalStateException(
+                "Termux rejected RUN_COMMAND. Confirm the Android RUN_COMMAND permission and " +
+                    "allow-external-apps=true in ~/.termux/termux.properties.",
+                failure
+            )
         }
-        executionId
+        return executionId to waiter
     }
 
     fun close() {
         runCatching { context.unregisterReceiver(receiver) }
     }
+
 }

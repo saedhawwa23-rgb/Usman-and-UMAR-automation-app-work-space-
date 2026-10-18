@@ -35,6 +35,7 @@ import com.opendroid.ai.ui.theme.AppTheme
 fun CapabilitiesScreen(
     onSearchAI: () -> Unit,
     onSearchGitHub: () -> Unit,
+    onGitHubWorkspace: () -> Unit,
     onTermux: () -> Unit,
     onUniversalAgent: () -> Unit
 ) {
@@ -65,6 +66,12 @@ fun CapabilitiesScreen(
             description = "Search public GitHub repositories, preview README/files, then explicitly ADD, USE, or CLONE.",
             icon = Icons.Default.Code,
             onClick = onSearchGitHub
+        )
+        CapabilityCard(
+            title = "GITHUB WORKSPACE",
+            description = "Authenticate with GitHub Device Flow, browse your repositories, inspect files, and manage issues through the real GitHub API.",
+            icon = Icons.Default.Code,
+            onClick = onGitHubWorkspace
         )
         CapabilityCard(
             title = "TERMUX INTEGRATION",
