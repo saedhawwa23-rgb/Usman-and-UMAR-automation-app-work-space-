@@ -1,80 +1,48 @@
- # Usman-and-UMAR-automation-app-work-space-
+# USMAN AND UMAR
 
+USMAN AND UMAR is an Android automation assistant built on the OpenDroid codebase. This branch moves reasoning to cloud LLM providers, with OpenRouter as the default, while keeping device actions explicit and separately permissioned.
 
- ## Checkpoint completed
+## Runtime architecture
 
-Repository: [usman-and-umar-workspace](https://github.com/umarashebir-cpu/usman-and-umar-workspace)
+- **Cloud reasoning:** OpenRouter is selected for new installations. Other configured providers are available from Settings. Provider credentials are stored through the app's protected credential store; requests require a configured provider and, where applicable, an API key.
+- **Tool execution:** The cloud model can request registered tools through the OpenAI-compatible tool-calling protocol. The app validates and dispatches each tool locally; Android actions remain subject to their existing grants and approval rules.
+- **GitHub discovery:** Public repository search and inspection use GitHub's REST API. The app can save a repository as supported project context, make it active, inspect metadata/README/root entries, and start a real `git clone` through the Termux `RUN_COMMAND` API.
+- **Integrated Linux terminal:** The terminal screen owns an app-private Alpine ARMv7 userspace and starts it through the reviewed Termux-maintained PRoot source with `--link2symlink`. The rootfs is downloaded and SHA-256 verified on first use; the app does not require root or a separate Termux installation. The PRoot ARM32 executable must be built and installed for the target device before the runtime can report ready.
+- **Optional Termux bridge:** The legacy external Termux integration remains available for explicitly authorized compatibility tasks, but it is not the integrated terminal backend and is not required for normal app operation.
+- **No bundled local inference:** The app no longer packages a GGUF model, llama.cpp module, or LiteRT local inference engine. Termux remains an optional user-authorized execution backend; it is not an AI reasoning engine.
 
-Latest commit:
+GitHub and Linux-runtime installation require connectivity. GitHub public endpoints can be rate-limited. Tool availability and successful model tool-calling vary by provider/model. Android can stop background processes, so terminal sessions are recoverable but are not advertised as unlimited background execution.
 
-```text
-68d670b2d2f4ea159c315e2aef5df6d2b236a535
-fix: compile task state contract assertion
+## Android and build requirements
+
+| Setting | Value |
+|---|---|
+| Minimum Android SDK | 28 (Android 9) |
+| Target Android SDK | 34 (Android 14) |
+| Current app version | `3.0.0-cloud-ai` (versionCode 23) |
+| Packaging | Android application; no model asset or inference JNI module |
+
+Build with JDK 21 and the Android SDK installed:
+
+```bash
+./gradlew :app:testDebugUnitTest
+./gradlew assembleDebug
+./gradlew assembleRelease -PallowUnsignedRelease=true
 ```
 
-### Implemented and connected
+The opt-in unsigned release is for validation only and is not installable as a distributable signed release. A distributable release requires a release keystore and passwords supplied through private Gradle properties or environment variables. Never commit signing material.
 
-- Persistent Task Manager Room database tables:
-  - Tasks
-  - Dependencies
-  - Execution history
-- Room database migration from version 10 to 11.
-- Task repository with:
-  - Creation and validation
-  - Legal state transitions
-  - Execution outcome recording
-  - Restart recovery for interrupted tasks
-- Hilt dependency injection for the task DAO and repository.
-- Task Manager UI integrated into the existing bottom navigation.
-- Real task actions:
-  - Create
-  - Prepare
-  - Queue
-  - Start
-  - Pause for review
-  - Resume
-  - Retry
-- Automated tests for:
-  - Tool Registry contracts
-  - Task state transitions
-  - Workflow validation
-  - Task Manager state contracts
-- Fixed all source and test compilation errors found by CI.
+## Device setup
 
-### Actual CI results
+After installation, configure an LLM provider and its API key in Settings. Open the integrated terminal to install the verified Alpine userspace, then use its real shell and `apk` package manager. The optional compatibility bridge separately requires Termux, its external-command setting, and the Android `RUN_COMMAND` permission. Android permission prompts and high-impact plan approvals remain in force.
 
-CI run: [39128985916](https://github.com/umarashebir-cpu/usman-and-umar-workspace/actions/runs/39128985916)
+## Verification status
 
-Passed:
+Build and unit-test results are recorded in the pull request. Physical-device execution of the full GitHub → Termux clone → file inspection workflow is **UNVERIFIED — REQUIRES DEVICE** until exercised on a supported Android device with Termux installed and authorized.
 
-- Unit tests
-- Debug APK build
-- Android lint
-- Unsigned release APK with R8/ProGuard
+## Project provenance and license
+The canonical repository for this project is [saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-).
+The canonical repository for this project is [saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-).
 
-The instrumentation jobs did not execute application tests because the GitHub-hosted emulator failed to register with ADB:
 
-```text
-adb: device 'emulator-5554' not found
-Timeout waiting for emulator to boot.
-```
-
-This is an emulator infrastructure failure, not a reported application assertion failure. Instrumented tests remain unverified.
-
-### APK artifact
-
-The actual unsigned release artifact was downloaded from the successful CI release job:
-
-[app-release-unsigned.apk](/home/ubuntu/work/ci-artifacts-39128985916/app-release-unsigned.apk)
-
-Measured metadata:
-
-```text
-Size: 25,617,831 bytes
-SHA-256: a48e0b8e86bf714f8b674e20114d6b061163d5606b8395dbed9f63d0edf0b8fa
-Signing: unsigned; not directly installable
-```
-
-### Remaining work
-
-The complete product specification is not finished yet. Remaining major implementation areas include deeper integration of the shared execution engine with AI tool calls, executable workflows and approval gates, expanded phone automation, GitHub/research/file tools, controlled plugin installation, and reliable emulator/device verification.
+The Android foundation is based on the upstream [OpenDroid project](https://github.com/yashab-cyber/opendroid). Apache License 2.0 notices are retained in [LICENSE](LICENSE). Project notes are in [`docs/`](docs/).
