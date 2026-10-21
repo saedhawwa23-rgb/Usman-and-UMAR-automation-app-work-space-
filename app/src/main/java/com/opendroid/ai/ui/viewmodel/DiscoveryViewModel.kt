@@ -56,7 +56,10 @@ class DiscoveryViewModel @Inject constructor(
         _busy.value = true
         _message.value = null
         runCatching { discoveryRepository.searchGitHub(query) }
-            .onSuccess { _githubResults.value = it }
+            .onSuccess {
+                _githubResults.value = it
+                if (it.isEmpty()) _message.value = "No public GitHub repositories matched ‘${query.trim()}’. Try broader keywords or enter owner/repository for a direct lookup."
+            }
             .onFailure { _message.value = it.message ?: "GitHub search failed" }
         _busy.value = false
     }
@@ -127,7 +130,7 @@ class DiscoveryViewModel @Inject constructor(
 
     fun cloneRepository(url: String) = viewModelScope.launch {
         _message.value = termuxIntegration.cloneGitHubRepository(url).fold(
-            onSuccess = { "Git clone started in Termux (job $it). Open the Termux screen to view its exit code and output." },
+            onSuccess = { "Public git clone started in Termux (execution $it). Open Termux Controls for the callback result. The repository is cloned to Termux home; it is not imported into an app-managed sandbox." },
             onFailure = { it.message ?: "Could not start the GitHub clone in Termux." }
         )
     }
