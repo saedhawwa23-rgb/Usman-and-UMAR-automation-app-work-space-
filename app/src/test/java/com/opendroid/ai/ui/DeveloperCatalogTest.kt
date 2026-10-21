@@ -17,7 +17,7 @@ class DeveloperCatalogTest {
     fun searchMatchesLetterTitleAndDescriptionCaseInsensitively() {
         assertTrue(DeveloperCatalog.search("p").any { it.letter == 'P' })
         assertTrue(DeveloperCatalog.search("github").any { it.letter == 'G' })
-        assertTrue(DeveloperCatalog.search("project file browser").any { it.letter == 'F' })
+        assertTrue(DeveloperCatalog.search("file manager").any { it.letter == 'F' })
         assertTrue(DeveloperCatalog.search("definitely absent").isEmpty())
     }
 
