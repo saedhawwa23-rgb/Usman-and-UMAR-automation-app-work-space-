@@ -23,6 +23,7 @@ class DeveloperAgentRegistryTest {
         assertEquals(AgentAvailability.NOT_TESTED, registry.healthSnapshot().single().second.availability)
         assertNotNull(registry.get("example-agent"))
         assertTrue(registry.all().single().descriptor.capabilities.features.isEmpty())
+        assertEquals("Not assessed", registry.all().single().descriptor.architectureSupport)
     }
 
     @Test
@@ -38,10 +39,19 @@ class DeveloperAgentRegistryTest {
         override val descriptor = CodingAgentDescriptor(
             id = "example-agent",
             name = "Example agent",
-            version = null,
+            latestRelease = null,
+            releaseDate = null,
             license = null,
             upstreamUrl = "https://example.org/source",
-            documentationUrl = "https://example.org/docs"
+            documentationUrl = "https://example.org/docs",
+            runtimeRequirements = "Not assessed",
+            architectureSupport = "Not assessed",
+            androidApiSupport = "Not assessed",
+            supportedExecutionBackends = "Not assessed",
+            providerRequirements = "Not assessed",
+            networkStorageAndPermissionRequirements = "Not assessed",
+            securityBoundary = "Not assessed",
+            metadataVerifiedAtMs = System.currentTimeMillis()
         )
 
         override fun healthCheck() = CodingAgentHealth(AgentAvailability.NOT_TESTED, "No installation or smoke test has been run.")

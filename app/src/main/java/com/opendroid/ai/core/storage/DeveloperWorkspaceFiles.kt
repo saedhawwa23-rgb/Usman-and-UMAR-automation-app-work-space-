@@ -74,6 +74,13 @@ object WorkspacePathPolicy {
         }
         return target
     }
+
+    fun renameTarget(sourceRelativePath: String, newName: String): String {
+        val source = normalizeRelative(sourceRelativePath)
+        val cleanName = validateName(newName)
+        val parent = source.substringBeforeLast('/', missingDelimiterValue = "")
+        return listOf(parent, cleanName).filter { it.isNotBlank() }.joinToString("/")
+    }
 }
 
 /** Small app-private workspace API for the Developers file browser. */
@@ -211,9 +218,7 @@ class DeveloperWorkspaceFiles(private val context: Context) : WorkspaceSandboxBa
     override fun rename(relativePath: String, newName: String): String {
         val source = resolve(relativePath)
         require(source.exists()) { "The selected workspace item no longer exists." }
-        val cleanName = WorkspacePathPolicy.validateName(newName)
-        val parent = source.parentFile ?: root()
-        val destination = resolve(relativePathOf(parent, cleanName))
+        val destination = resolve(WorkspacePathPolicy.renameTarget(relativePath, newName))
         require(!destination.exists()) { "A file or folder with that name already exists." }
         require(source.renameTo(destination)) { "Rename failed. Check available storage and permissions." }
         return relativePathOf(destination)

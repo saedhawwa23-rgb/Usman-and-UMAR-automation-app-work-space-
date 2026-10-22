@@ -103,6 +103,21 @@ object TermuxOutputPolicy {
     }
 }
 
+object TermuxExecutionPolicy {
+    const val MIN_WAIT_MS = 1_000L
+    const val MAX_WAIT_MS = 30_000L
+
+    fun validateWait(timeoutMs: Long) {
+        require(timeoutMs in MIN_WAIT_MS..MAX_WAIT_MS) { "Command wait timeout must be between 1 and 30 seconds." }
+    }
+
+    fun cancellationUnsupported() = BackendOperationResult(
+        supported = false,
+        succeeded = false,
+        detail = "Termux RUN_COMMAND does not expose process cancellation. A timed-out command may still be running in Termux."
+    )
+}
+
 @Singleton
 class TermuxIntegration @Inject constructor(
     @ApplicationContext private val context: Context
@@ -129,7 +144,7 @@ class TermuxIntegration @Inject constructor(
         private const val EXTRA_EXECUTION_ID = "execution_id"
         private const val MAX_RESULTS = 30
         private const val MAX_COMMAND_LENGTH = 64 * 1024
-        private const val COMMAND_TIMEOUT_MS = 30_000L
+        private const val COMMAND_TIMEOUT_MS = TermuxExecutionPolicy.MAX_WAIT_MS
 
         private val nextExecutionId = AtomicInteger(SystemClock.elapsedRealtime().toInt().and(Int.MAX_VALUE).coerceAtLeast(1))
     }
@@ -220,7 +235,7 @@ class TermuxIntegration @Inject constructor(
     }
 
     override suspend fun execute(request: BackendExecutionRequest): BackendExecutionResult {
-        require(request.timeoutMs in 1_000L..COMMAND_TIMEOUT_MS) { "Termux wait timeout must be between 1 and 30 seconds." }
+        TermuxExecutionPolicy.validateWait(request.timeoutMs)
         val result = runShellCommand(request.command, request.timeoutMs)
         return BackendExecutionResult(
             executionId = result.executionId.toString(),
@@ -232,11 +247,7 @@ class TermuxIntegration @Inject constructor(
         )
     }
 
-    override fun cancel(executionId: String): BackendOperationResult = BackendOperationResult(
-        supported = false,
-        succeeded = false,
-        detail = "Termux RUN_COMMAND does not expose process cancellation. A timed-out command may still be running in Termux."
-    )
+    override fun cancel(executionId: String): BackendOperationResult = TermuxExecutionPolicy.cancellationUnsupported()
 
     fun hasRunCommandPermission(): Boolean = ContextCompat.checkSelfPermission(
         context,
@@ -256,7 +267,7 @@ class TermuxIntegration @Inject constructor(
     suspend fun runShellCommand(command: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): TermuxResult {
         require(command.isNotBlank()) { "Enter a command first." }
         require(command.length <= MAX_COMMAND_LENGTH) { "Command is too long." }
-        require(timeoutMs in 1_000L..COMMAND_TIMEOUT_MS) { "Command wait timeout must be between 1 and 30 seconds." }
+        TermuxExecutionPolicy.validateWait(timeoutMs)
         check(isCommandExecutionAvailable()) { availabilityMessage() }
         val task = TermuxCommand("Linux command via Termux", "sh", listOf("-lc", command))
         val (executionId, waiter) = submit(task)

@@ -152,8 +152,16 @@ fun DevelopersScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(candidate.descriptor.name, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
-                        Text("${candidate.health.availability.name.replace('_', ' ')} · ${candidate.descriptor.version ?: "version unknown"} · ${candidate.descriptor.license ?: "license not recorded"}", color = AppTheme.colors.accentCyan)
+                        Text("${candidate.health.availability.name.replace('_', ' ')} · ${candidate.descriptor.latestRelease ?: "latest release unknown"} · ${candidate.descriptor.releaseDate ?: "release date unknown"} · ${candidate.descriptor.license ?: "license not recorded"}", color = AppTheme.colors.accentCyan)
                         Text(candidate.health.detail, color = AppTheme.colors.textSecondary)
+                        Text("Installed version: ${candidate.health.installedVersion ?: "not reported"} · Health checked at: ${candidate.health.checkedAtMs}", color = AppTheme.colors.textSecondary)
+                        Text("Runtime: ${candidate.descriptor.runtimeRequirements}", color = AppTheme.colors.textSecondary)
+                        Text("Architecture: ${candidate.descriptor.architectureSupport} · Android API: ${candidate.descriptor.androidApiSupport}", color = AppTheme.colors.textSecondary)
+                        Text("Execution backends: ${candidate.descriptor.supportedExecutionBackends}", color = AppTheme.colors.textSecondary)
+                        Text("Provider requirements: ${candidate.descriptor.providerRequirements}", color = AppTheme.colors.textSecondary)
+                        Text("Network/storage/permissions: ${candidate.descriptor.networkStorageAndPermissionRequirements}", color = AppTheme.colors.textSecondary)
+                        Text("Security boundary: ${candidate.descriptor.securityBoundary}", color = AppTheme.colors.textSecondary)
+                        Text("Metadata verified at: ${candidate.descriptor.metadataVerifiedAtMs}", color = AppTheme.colors.textSecondary)
                         Text("Upstream: ${candidate.descriptor.upstreamUrl}", color = AppTheme.colors.textSecondary)
                         Text("Documentation: ${candidate.descriptor.documentationUrl}", color = AppTheme.colors.textSecondary)
                         Text("Capabilities: ${candidate.descriptor.capabilities.features.joinToString { it.name.replace('_', ' ') }.ifBlank { "none claimed" }}", color = AppTheme.colors.textSecondary)

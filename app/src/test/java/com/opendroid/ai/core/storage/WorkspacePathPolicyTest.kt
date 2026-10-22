@@ -32,6 +32,15 @@ class WorkspacePathPolicyTest {
     }
 
     @Test
+    fun buildsSafeRenameTargetsAtRootAndInsideFolders() {
+        assertEquals("new.txt", WorkspacePathPolicy.renameTarget("old.txt", "new.txt"))
+        assertEquals("src/main/New.kt", WorkspacePathPolicy.renameTarget("src/main/Old.kt", "New.kt"))
+        assertThrows(IllegalArgumentException::class.java) {
+            WorkspacePathPolicy.renameTarget("src/Old.kt", "../outside")
+        }
+    }
+
+    @Test
     fun rejectsMovingFolderIntoItselfOrDescendant() {
         listOf("../outside", "/absolute", "project/child", "project/child/deeper").forEach { destination ->
             assertThrows(IllegalArgumentException::class.java) {

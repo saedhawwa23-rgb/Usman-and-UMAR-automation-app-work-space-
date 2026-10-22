@@ -67,3 +67,49 @@ The official-source workflow is still auditing the remaining user-listed candida
 ## Remaining research
 
 Goose, Cline, Kilo Code, Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the active official-source research workflow and will be appended when verified.
+
+## Goose
+
+**Identity and release.** Current upstream is [aaif-goose/goose](https://github.com/aaif-goose/goose), formerly Block's Goose; it is an agent, not a sandbox service. Latest stable checked release is `v1.55.0` (2026-10-16), Apache-2.0. [Release](https://github.com/aaif-goose/goose/releases/tag/v1.55.0) · [license](https://github.com/aaif-goose/goose/blob/main/LICENSE).
+
+**Runtime and Android fit.** Primarily Rust/Cargo. Official installer and assets support x86_64 and ARM64, not ARM32. Docs describe Termux/Android builds, but not the requested 32-bit ARM target or an Android API 28 app; the Termux source build disables local inference/V8 and system keyring. No device install/test was run. Optional official Goose sandbox is macOS-only; remote `goose serve` is separate. [Build guidance](https://github.com/aaif-goose/goose/blob/main/BUILDING_LINUX.md) · [installer architecture](https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.sh) · [sandbox](https://goose-docs.ai/docs/guides/sandbox/).
+
+**Backends and features.** Goose documents local CLI/desktop/API, MCP over stdio or HTTP, containers, a remote ACP server, and roaming agents. It includes terminal/file/Git/test tools, model providers, extensions, session persistence/resume and control commands. No Daytona/E2B-native integration was verified; those services are separate remote sandbox products and require their own accounts/keys. The default local agent can execute with the user's privileges and modify accessible files; approvals are not isolation. [Providers](https://goose-docs.ai/docs/getting-started/providers/) · [extensions](https://goose-docs.ai/docs/getting-started/using-extensions/) · [remote server](https://goose-docs.ai/docs/guides/remote-goose-server/) · [security](https://github.com/aaif-goose/goose/blob/main/SECURITY.md).
+
+## Cline
+
+**Identity and release.** Official upstream is [cline/cline](https://github.com/cline/cline), a coding agent exposed as CLI/SDK/IDE/desktop and a separate hosted Cloud Agents product. Versions are surface-specific rather than a single release: newest verified releases on 2026-10-22 were CLI `v3.0.73` and SDK `v0.0.95` (2026-10-17), Desktop `v0.0.48` (2026-10-17) and IDE extension `v4.1.25` (2026-10-16). Apache-2.0. [Releases](https://github.com/cline/cline/releases) · [license](https://raw.githubusercontent.com/cline/cline/main/LICENSE).
+
+**Runtime and Android fit.** TypeScript/Bun monorepo; CLI/SDK docs and current package manifests require Node 22+, and the CLI is distributed as per-platform compiled binaries. Official binaries and remote SSH helper support x64/ARM64, not ARM32; no Android/API 28/Termux support is documented. Thus not a supported Galaxy M10 ARM32 local install. Cline Cloud Agents are a distinct hosted remote sandbox usable from a mobile browser; they do not make the local CLI Android-compatible. No installation or smoke test was performed. [CLI README](https://github.com/cline/cline/blob/main/apps/cli/README.md) · [installation](https://docs.cline.bot/getting-started/installing-cline) · [SSH support](https://docs.cline.bot/usage/cline-desktop-ssh) · [Cloud Agents](https://docs.cline.bot/usage/cloud-agents).
+
+**Capabilities and safety.** Plan/Act workflows, file edits, shell commands, tests, GitHub, providers, MCP/plugins/hooks, headless output, history and checkpoint restore are documented. Local approval/YOLO modes do not create isolation; shell access can modify files and run arbitrary commands, plugins run host code. Cloud Agents use a per-session sandbox with selected-repository access; remote SSH runs as the remote user. Provider usage requires Cline account/payment, a subscription, BYOK, or local model service. [Plan/Act](https://docs.cline.bot/core-workflows/plan-and-act) · [checkpoints](https://docs.cline.bot/core-workflows/checkpoints) · [plugins](https://docs.cline.bot/sdk/plugins) · [security/network docs](https://docs.cline.bot/usage/cli-overview).
+
+## Remaining research
+
+Kilo Code, Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the active official-source workflow.
+
+## Kilo Code
+
+**Identity and release.** Exact upstream is [Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode); it is an IDE/CLI/hosted coding-agent product, not an Android app. Version tracks differ: latest JetBrains stable checked 2026-10-22 is `7.1.12` (published 2026-10-22); CLI/VS Code stable is `7.8.15` (2026-10-19). Client/repository license is MIT; source-available Gateway/Cloud code has exclusions, so do not assume all hosted backend/security code is MIT. [releases](https://github.com/Kilo-Org/kilocode/releases) · [openness/licensing](https://kilo.ai/open).
+
+**Runtime and target fit.** TypeScript/JavaScript and Bun/Node-compatible CLI; current official binary/dependency matrix includes Linux x64/ARM64, not ARM32/Android. No API-28/Termux/PRoot support or official APK is documented. Native PTY/watcher/tree-sitter requirements are unverified on the Galaxy M10 ARM32 target. No installation/smoke test was run. [CLI](https://kilo.ai/docs/code-with-ai/platforms/cli) · [install](https://kilo.ai/docs/getting-started/installing).
+
+**Backends and requirements.** Local IDE/CLI is separate from hosted Kilo Cloud Agent, which provides isolated Linux containers, repository integrations, branches/worktrees and optionally commits/pushes. Cloud use requires Kilo account and GitHub/GitLab/Bitbucket integration; compute is billed separately from model inference, and beta containers are ephemeral. Kilo documents 30+ cloud providers, OpenAI-compatible endpoints and local Ollama/LM Studio; provider/network configuration is required. Daytona/E2B are not documented as Kilo-native integrations. [Cloud Agents](https://kilo.ai/docs/code-with-ai/platforms/cloud-agent) · [providers](https://kilo.ai/docs/ai-providers) · [Gateway](https://kilo.ai/docs/gateway).
+
+**Capabilities and safety.** Code/Ask/Plan/Debug and custom agents, tools for files, shell, web, MCP, GitHub, subagents/TODOs, checkpoints, sessions and CLI server/task APIs are documented. Local modes can access host files/commands; auto-approval and plugins are risky, plugins can access files/credentials/network. Cloud adds container isolation but retains injected secrets and repository/network trust boundaries. This remains an unverified remote option, not an installed local adapter. [agents](https://kilo.ai/docs/code-with-ai/agents/using-agents) · [tools](https://kilo.ai/docs/automate/tools) · [marketplace/security limits](https://kilo.ai/docs/customize/marketplace) · [testing API](https://github.com/Kilo-Org/kilocode/blob/main/TESTING.md).
+
+## Remaining research
+
+Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the official-source workflow.
+
+## Aider
+
+**Identity and release.** Official upstream is [Aider-AI/aider](https://github.com/Aider-AI/aider), a Python terminal coding assistant (not a hosted sandbox or Android app). Checked 2026-10-22, official GitHub Releases marks `v0.86.0` latest (the extracted release page omits year); PyPI lists `aider-chat 0.86.2`, uploaded 2026-02-12. Feeds disagree, so retain both values rather than inventing one canonical release. Apache-2.0. [GitHub releases](https://github.com/Aider-AI/aider/releases) · [PyPI](https://pypi.org/project/aider-chat/) · [license](https://raw.githubusercontent.com/Aider-AI/aider/main/LICENSE.txt).
+
+**Runtime and target fit.** Python package; the released wheel requires Python `>=3.10,<3.13` and is pure-Python, but dependencies can require platform builds. Official install docs provide desktop/Docker methods only; no Android API 28, ARM32, Termux or PRoot support is established. A remote LLM does not remove the local Python/Git/filesystem requirement. No target-device installation/smoke test was run. [installation](https://aider.chat/docs/install.html) · [runtime metadata](https://pypi.org/project/aider-chat/).
+
+**Capabilities and boundaries.** Interactive file editing, repo map, Git, `/run`, user-specified tests/lint, chat history/restore, Ctrl-C, `/undo`, and cloud/local/OpenAI-compatible model providers are documented. No official plugin mechanism or broad autonomous GitHub management was verified. Aider operates with host filesystem/command privileges and sends repository map/context to the configured model; Git recovery is not isolation. Docker is a separate host-provided environment, not an Aider-managed Android backend. [commands](https://aider.chat/docs/usage/commands.html) · [tests](https://aider.chat/docs/usage/lint-test.html) · [providers](https://aider.chat/docs/llms.html) · [security boundary](https://aider.chat/docs/git.html).
+
+## Remaining research
+
+Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the official-source workflow.

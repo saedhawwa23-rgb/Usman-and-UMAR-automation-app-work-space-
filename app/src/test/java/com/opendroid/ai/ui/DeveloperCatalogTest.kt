@@ -42,4 +42,12 @@ class DeveloperCatalogTest {
         assertTrue(files.description.contains("move", ignoreCase = true))
         assertTrue(sandbox.description.contains("not an isolated", ignoreCase = true))
     }
+
+    @Test
+    fun openSourceAgentCategoryDoesNotExposeTheOrdinaryToolAgentAsACodingAgent() {
+        val agents = DeveloperCatalog.all.single { it.letter == 'O' }
+        assertEquals(CapabilityState.NOT_AVAILABLE, agents.state)
+        assertEquals(null, agents.action)
+        assertTrue(agents.description.contains("not an autonomous coding-agent", ignoreCase = true))
+    }
 }

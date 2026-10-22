@@ -98,8 +98,16 @@ class DeveloperToolsViewModel @Inject constructor(
         return _codingAgents.value.filter { candidate ->
             term.isEmpty() || candidate.descriptor.name.contains(term, ignoreCase = true) ||
                 candidate.descriptor.id.contains(term, ignoreCase = true) ||
-                candidate.descriptor.version.orEmpty().contains(term, ignoreCase = true) ||
+                candidate.descriptor.latestRelease.orEmpty().contains(term, ignoreCase = true) ||
+                candidate.descriptor.releaseDate.orEmpty().contains(term, ignoreCase = true) ||
                 candidate.descriptor.license.orEmpty().contains(term, ignoreCase = true) ||
+                candidate.descriptor.runtimeRequirements.contains(term, ignoreCase = true) ||
+                candidate.descriptor.architectureSupport.contains(term, ignoreCase = true) ||
+                candidate.descriptor.androidApiSupport.contains(term, ignoreCase = true) ||
+                candidate.descriptor.supportedExecutionBackends.contains(term, ignoreCase = true) ||
+                candidate.descriptor.providerRequirements.contains(term, ignoreCase = true) ||
+                candidate.descriptor.networkStorageAndPermissionRequirements.contains(term, ignoreCase = true) ||
+                candidate.descriptor.securityBoundary.contains(term, ignoreCase = true) ||
                 candidate.descriptor.upstreamUrl.contains(term, ignoreCase = true) ||
                 candidate.descriptor.documentationUrl.contains(term, ignoreCase = true) ||
                 candidate.health.detail.contains(term, ignoreCase = true) ||

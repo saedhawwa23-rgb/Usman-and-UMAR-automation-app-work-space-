@@ -9,7 +9,7 @@ Android identity remains `applicationId com.usmanandumar.app`, `minSdk 28`, and 
 - Added a shared backend contract with explicit capability flags, health/compatibility status, bounded command request/result types, cancellation semantics and an extensible in-memory registry. The registered adapters are the existing app-owned workspace, existing Termux integration and app PRoot status; no remote provider is registered by default. Remote adapters require provider-specific implementation and verified credentials/configuration.
 - Extended the existing app-workspace file manager with bounded search (5,000 entries, depth 12, 100 results), safe relative-path checks, symlink rejection, create/read/edit/save, import/export of supported UTF-8 text, rename, in-workspace move and confirmation-gated deletion (empty folders only). Approved saves display a bounded before/after diff and use staged/atomic file replacement when supported. Text operations are limited to 100 KiB. This is app file storage, not a command sandbox or per-project workspace.
 - Reused the existing Termux RUN_COMMAND bridge as the command backend. It requires explicit user confirmation in the terminal UI, uses bounded output and a 1–30 second wait, and reports its real boundary: Termux shell execution is not isolated and cannot be cancelled by this app. A timeout stops waiting and cleans the app-side callback state but may leave the Termux process running. Termux is optional.
-- Added a generic coding-agent lifecycle contract and empty-by-default registry with explicit metadata, capability flags, health, start/inspect/cancel/resume results and duplicate-ID rejection. It is visible through the same `DeveloperToolsViewModel` search as live tools/backends in Developers and Discovery. No coding-agent adapters are currently registered; the existing CloudToolAgent is explicitly kept separate because it is not an autonomous coding-agent integration. Centralized filtering reads only the current process registries. The A–Z entries remain a static category guide, not a downloadable or auto-updating package catalog. Tool version/license/update/install metadata and remote release feeds are not yet implemented.
+- Added a generic coding-agent lifecycle contract and empty-by-default registry. A registered adapter must record release/date/license/source, runtime/architecture/API/backend/provider/network/storage/permission/security metadata, health, capability flags and task lifecycle; a separate optional management interface defines install/configure/update/uninstall/troubleshoot only when implemented. It is visible through the same `DeveloperToolsViewModel` search as live tools/backends in Developers and Discovery. No coding-agent adapters are currently registered; the existing CloudToolAgent is explicitly kept separate because it is not an autonomous coding-agent integration. Centralized filtering reads only the current process registries. The A–Z entries remain a static category guide, not a downloadable or auto-updating package catalog; release-feed refresh/caching and concrete agent adapters remain unimplemented.
 - Discovery offers one text field with AI/model, sandbox/backend, developer-tools, GitHub-project and updates filters. Existing AI and GitHub behavior is retained; a missing update feed is shown as unavailable, not as an installed tool.
 - The A–Z guide describes existing functions and marks unsupported categories explicitly. It does not install OpenHands, OpenBuilder, OpenManus, OpenSwarm or another candidate.
 
@@ -27,7 +27,7 @@ No backend is labelled “securely isolated.” Command approval is authorizatio
 
 ## Agent-candidate research
 
-Official-source review is underway. The six completed candidates (OpenHands, OpenBuilder, OpenManus, OpenSwarm, OpenAI Codex CLI and Gemini CLI) are summarized with official repository/docs, observed release/license, runtime requirements, Android/ARM32 fit and security caveats in [agent-compatibility-research.md](agent-compatibility-research.md). Hermes Agent review is also completed and appended there. None is installed, exposed as available, or locally tested by this revision. In particular, the verified OpenHands/OpenBuilder/OpenManus/OpenSwarm identities have not been substituted for each other; native API 28 ARM32 compatibility is not claimed. Remaining candidate and Daytona/E2B research is still pending in the official-source workflow and will be added before finalizing this audit.
+Official-source review is recorded for 11 candidates: OpenHands, OpenBuilder, OpenManus, OpenSwarm, OpenAI Codex CLI, Gemini CLI, Hermes Agent, Goose, Cline, Kilo Code and Aider. Details and official references are in [agent-compatibility-research.md](agent-compatibility-research.md). None is installed or smoke-tested by this revision. In particular, the required OpenHands/OpenBuilder/OpenManus/OpenSwarm identities are not substituted for each other; native API 28 ARM32 compatibility is not claimed. Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B research remains pending.
 
 ## Google Drive and credentials
 
@@ -56,7 +56,7 @@ Existing GitHub OAuth and provider API-key stores use Android Keystore-backed AE
 
 - Static checks in the sandbox: passed for `git diff --check`, no conflict markers, app ID, `minSdk 28`, ARM32 ABI declaration and exactly one A–Z entry in order.
 - Local Gradle `testDebugUnitTest assembleDebug`: BLOCKED before compilation because no Android SDK is installed and `ANDROID_HOME`/`sdk.dir` is absent. This is an environment limitation; it is not a test pass or source failure.
-- GitHub Actions on this revised source commit: **PENDING**. The exact test count, lint, debug/release build, API 28/API 36 emulator tests and APK metadata will be added only after the final PR commit's CI completes.
+- GitHub Actions run `39815623547` on source commit `43ae245` failed compilation; the compiler identified `DeveloperWorkspaceFiles.kt` passing a second argument to the one-argument `relativePathOf`. The workspace rename operation has been changed locally to use a pure validated `WorkspacePathPolicy.renameTarget` helper with added root/nested/traversal tests. This fix is not yet pushed or validated; lint and API 36 failed at compile time, and final unit/build/API 28/API 36/release/APK results remain pending the next exact-commit CI run.
 - Physical Galaxy M10 test: **NOT RUN**.
 - Drive OAuth/API test: **BLOCKED**; no Drive integration or OAuth setup exists.
 - External-agent installs/smoke tests: **NOT RUN**; official-source research only.
@@ -72,16 +72,16 @@ Modified application files:
 - `app/src/main/java/com/opendroid/ai/ui/screens/DiscoveryScreen.kt`
 - `app/src/main/java/com/opendroid/ai/ui/screens/WorkspaceFilesScreen.kt`
 - `app/src/main/java/com/opendroid/ai/ui/viewmodel/DeveloperToolsViewModel.kt`
-- `app/src/main/java/com/opendroid/ai/core/agent/DeveloperAgentRegistry.kt`
 
 Modified tests:
 - `app/src/test/java/com/opendroid/ai/core/storage/WorkspacePathPolicyTest.kt`
 - `app/src/test/java/com/opendroid/ai/ui/DeveloperCatalogTest.kt`
-- `app/src/test/java/com/opendroid/ai/core/agent/DeveloperAgentRegistryTest.kt`
 
 Added files:
+- `app/src/main/java/com/opendroid/ai/core/agent/DeveloperAgentRegistry.kt`
 - `app/src/main/java/com/opendroid/ai/core/backend/SandboxBackend.kt`
 - `app/src/main/java/com/opendroid/ai/core/storage/WorkspaceDiffPreview.kt`
+- `app/src/test/java/com/opendroid/ai/core/agent/DeveloperAgentRegistryTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/backend/BackendContractTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceAtomicWriterTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceDiffPreviewTest.kt`
