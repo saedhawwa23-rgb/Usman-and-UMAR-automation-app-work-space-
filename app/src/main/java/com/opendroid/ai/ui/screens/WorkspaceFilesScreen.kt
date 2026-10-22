@@ -1,8 +1,6 @@
 package com.opendroid.ai.ui.screens
 
 import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -523,14 +521,3 @@ private fun isPlainTextName(name: String): Boolean = name in setOf(".gitignore",
 private enum class DriveOperation { BROWSE, OPEN_FOLDER, UP_FOLDER, EXPORT }
 
 private const val GOOGLE_DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
-
-private fun Context.findActivity(): Activity? {
-    var current: Context = this
-    while (current is ContextWrapper) {
-        if (current is Activity) return current
-        val base = current.baseContext
-        if (base === current) break
-        current = base
-    }
-    return current as? Activity
-}
