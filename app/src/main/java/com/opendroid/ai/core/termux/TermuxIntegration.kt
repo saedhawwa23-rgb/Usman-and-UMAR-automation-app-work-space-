@@ -10,6 +10,15 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import com.opendroid.ai.core.backend.BackendCapabilities
+import com.opendroid.ai.core.backend.BackendDescriptor
+import com.opendroid.ai.core.backend.BackendExecutionRequest
+import com.opendroid.ai.core.backend.BackendExecutionResult
+import com.opendroid.ai.core.backend.BackendHealth
+import com.opendroid.ai.core.backend.BackendKind
+import com.opendroid.ai.core.backend.BackendOperationResult
+import com.opendroid.ai.core.backend.BackendStatus
+import com.opendroid.ai.core.backend.CommandSandboxBackend
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,10 +92,21 @@ data class TermuxResult(
     val succeeded: Boolean get() = error == null && exitCode == 0
 }
 
+object TermuxOutputPolicy {
+    const val MAX_CAPTURED_CHARS_PER_STREAM = 8 * 1024
+    private const val TRUNCATION_MARKER = "\n[output truncated by app limit]"
+
+    fun capture(output: String): String = if (output.length <= MAX_CAPTURED_CHARS_PER_STREAM) {
+        output
+    } else {
+        output.take(MAX_CAPTURED_CHARS_PER_STREAM - TRUNCATION_MARKER.length) + TRUNCATION_MARKER
+    }
+}
+
 @Singleton
 class TermuxIntegration @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : CommandSandboxBackend {
     companion object {
         const val TERMUX_PACKAGE = "com.termux"
         const val RUN_COMMAND_PERMISSION = "com.termux.permission.RUN_COMMAND"
@@ -119,6 +139,24 @@ class TermuxIntegration @Inject constructor(
     private val _results = MutableStateFlow<List<TermuxResult>>(emptyList())
     val results: StateFlow<List<TermuxResult>> = _results.asStateFlow()
 
+    override val descriptor = BackendDescriptor(
+        id = "termux-command",
+        name = "Termux command execution",
+        kind = BackendKind.TERMUX,
+        capabilities = BackendCapabilities(
+            executeCommands = true,
+            boundedWait = true,
+            outputLimitBytes = 48 * 1024,
+            networkAccess = true
+        ),
+        securityBoundary = "Commands run as the Termux app user in the user's Termux environment and may reach Termux-visible files and network resources; this is not per-project isolation.",
+        limitations = listOf(
+            "Termux must be installed, RUN_COMMAND permission granted, callbacks supported, and allow-external-apps enabled by the user.",
+            "The app can stop waiting after its timeout but cannot cancel the underlying Termux process through this API.",
+            "There are no enforced CPU/memory quotas, app-workspace mounting, or persistent project-scoped task logs."
+        )
+    )
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val id = intent.getIntExtra(EXTRA_EXECUTION_ID, -1)
@@ -134,8 +172,8 @@ class TermuxIntegration @Inject constructor(
             val result = TermuxResult(
                 executionId = id,
                 taskLabel = task.label,
-                stdout = bundle?.getString(EXTRA_STDOUT).orEmpty(),
-                stderr = bundle?.getString(EXTRA_STDERR).orEmpty(),
+                stdout = TermuxOutputPolicy.capture(bundle?.getString(EXTRA_STDOUT).orEmpty()),
+                stderr = TermuxOutputPolicy.capture(bundle?.getString(EXTRA_STDERR).orEmpty()),
                 exitCode = bundle?.takeIf { error == null }?.getInt(EXTRA_EXIT_CODE),
                 error = error
             )
@@ -174,6 +212,32 @@ class TermuxIntegration @Inject constructor(
         else -> "Termux command execution is available. Termux must also have allow-external-apps=true in ~/.termux/termux.properties."
     }
 
+    override fun healthCheck(): BackendHealth = when {
+        !isInstalled() -> BackendHealth(BackendStatus.REQUIRES_CONFIGURATION, "Termux is not installed; install it separately from a trusted distribution. No command was run.")
+        !supportsResultCallbacks() -> BackendHealth(BackendStatus.INCOMPATIBLE, "Termux ${versionName() ?: "version"} is older than the required 0.109 result-callback API.", installedVersion = versionName())
+        !hasRunCommandPermission() -> BackendHealth(BackendStatus.REQUIRES_CONFIGURATION, "Termux is installed; grant its RUN_COMMAND permission to this app. allow-external-apps and command execution have not been verified.", installedVersion = versionName())
+        else -> BackendHealth(BackendStatus.COMPATIBLE, "Termux ${versionName()} and RUN_COMMAND permission are present. allow-external-apps, execution smoke test, cancellation, and isolation are not verified.", installedVersion = versionName())
+    }
+
+    override suspend fun execute(request: BackendExecutionRequest): BackendExecutionResult {
+        require(request.timeoutMs in 1_000L..COMMAND_TIMEOUT_MS) { "Termux wait timeout must be between 1 and 30 seconds." }
+        val result = runShellCommand(request.command, request.timeoutMs)
+        return BackendExecutionResult(
+            executionId = result.executionId.toString(),
+            stdout = result.stdout,
+            stderr = result.stderr,
+            exitCode = result.exitCode,
+            error = result.error,
+            completedAtMs = result.completedAtMs
+        )
+    }
+
+    override fun cancel(executionId: String): BackendOperationResult = BackendOperationResult(
+        supported = false,
+        succeeded = false,
+        detail = "Termux RUN_COMMAND does not expose process cancellation. A timed-out command may still be running in Termux."
+    )
+
     fun hasRunCommandPermission(): Boolean = ContextCompat.checkSelfPermission(
         context,
         RUN_COMMAND_PERMISSION
@@ -192,6 +256,7 @@ class TermuxIntegration @Inject constructor(
     suspend fun runShellCommand(command: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): TermuxResult {
         require(command.isNotBlank()) { "Enter a command first." }
         require(command.length <= MAX_COMMAND_LENGTH) { "Command is too long." }
+        require(timeoutMs in 1_000L..COMMAND_TIMEOUT_MS) { "Command wait timeout must be between 1 and 30 seconds." }
         check(isCommandExecutionAvailable()) { availabilityMessage() }
         val task = TermuxCommand("Linux command via Termux", "sh", listOf("-lc", command))
         val (executionId, waiter) = submit(task)
@@ -202,8 +267,11 @@ class TermuxIntegration @Inject constructor(
                 stdout = "",
                 stderr = "",
                 exitCode = null,
-                error = "Timed out after ${timeoutMs / 1000}s. Check Termux is running, allow-external-apps=true is set, and battery optimization is disabled."
-            ).also { waiters.remove(executionId) }
+                error = "Stopped waiting after ${timeoutMs / 1000}s. This API cannot cancel the Termux process; it may still be running. Check Termux and its allow-external-apps setting."
+            ).also {
+                waiters.remove(executionId)
+                pendingTasks.remove(executionId)
+            }
     }
 
     fun cloneGitHubRepository(url: String): Result<Int> = runCatching { TermuxGitHubClone.command(url) }
@@ -246,7 +314,7 @@ class TermuxIntegration @Inject constructor(
         waiters[executionId] = waiter
         try {
             context.startService(command)
-        } catch (failure: Throwable) {
+        } catch (failure: Exception) {
             pendingTasks.remove(executionId)
             waiters.remove(executionId)
             pendingIntent.cancel()

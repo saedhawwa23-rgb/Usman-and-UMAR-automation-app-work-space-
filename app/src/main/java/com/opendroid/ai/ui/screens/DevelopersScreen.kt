@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.opendroid.ai.core.backend.BackendCapabilities
+import com.opendroid.ai.core.backend.BackendKind
+import com.opendroid.ai.core.backend.BackendStatus
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.DeveloperToolsViewModel
 import com.opendroid.ai.ui.viewmodel.LinuxTerminalViewModel
@@ -50,13 +54,14 @@ fun DevelopersScreen(
     val runtimeStatus by terminalViewModel.status.collectAsState()
     val registeredTools by toolCatalogViewModel.tools.collectAsState()
     val registeredConnectors by toolCatalogViewModel.connectors.collectAsState()
-    LaunchedEffect(Unit) { terminalViewModel.refresh() }
+    val backends by toolCatalogViewModel.backends.collectAsState()
+    val codingAgents by toolCatalogViewModel.codingAgents.collectAsState()
+    val workspaceStatus = backends.firstOrNull { it.descriptor.id == "app-workspace" }?.health?.status
+    LaunchedEffect(Unit) { terminalViewModel.refresh(); toolCatalogViewModel.refresh() }
     val entries = DeveloperCatalog.search(query)
-    val liveTools = remember(query, registeredTools) {
-        if (query.isBlank()) registeredTools else registeredTools.filter { tool ->
-            tool.qualifiedName.contains(query, ignoreCase = true) || tool.connectorName.contains(query, ignoreCase = true) || tool.description.contains(query, ignoreCase = true)
-        }
-    }
+    val liveTools = remember(query, registeredTools) { toolCatalogViewModel.searchTools(query) }
+    val liveBackends = remember(query, backends) { toolCatalogViewModel.searchBackends(query) }
+    val liveCodingAgents = remember(query, codingAgents) { toolCatalogViewModel.searchCodingAgents(query) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Text("DEVELOPERS", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
@@ -70,8 +75,12 @@ fun DevelopersScreen(
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Search developer categories A–Z") }
+            label = { Text("Search categories, backends, tools, and agent adapters") }
         )
+        OutlinedButton(
+            onClick = { terminalViewModel.refresh(); toolCatalogViewModel.refresh() },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("REFRESH BACKEND HEALTH AND TOOLS") }
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(entries, key = { "category:${it.letter}" }) { entry ->
@@ -83,8 +92,8 @@ fun DevelopersScreen(
                         }
                         Text(entry.description, color = AppTheme.colors.textSecondary)
                         Text(
-                            dynamicStatus(entry.letter, entry.state, termuxAvailable, termuxStatus, runtimeStatus.name),
-                            color = if (entry.state == CapabilityState.NOT_AVAILABLE) AppTheme.colors.accentRed else AppTheme.colors.textSecondary
+                            dynamicStatus(entry.letter, entry.state, termuxAvailable, termuxStatus, runtimeStatus.name, workspaceStatus),
+                            color = if (entry.state == CapabilityState.NOT_AVAILABLE || entry.state == CapabilityState.INCOMPATIBLE) AppTheme.colors.accentRed else AppTheme.colors.textSecondary
                         )
                         actionFor(
                             entry.action, onOpenAI, onOpenGitHubSearch, onOpenGitHubWorkspace,
@@ -93,6 +102,62 @@ fun DevelopersScreen(
                         )?.let { (label, callback) ->
                             Button(onClick = callback, modifier = Modifier.fillMaxWidth()) { Text(label) }
                         }
+                    }
+                }
+            }
+            item {
+                Text("SANDBOX BACKENDS · ${backends.size}", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
+                Text("Live local health checks; no remote provider is configured. Command approval does not create isolation.", color = AppTheme.colors.textSecondary)
+            }
+            if (liveBackends.isEmpty()) item { Text("No sandbox backends match ‘$query’.", color = AppTheme.colors.textSecondary) }
+            items(liveBackends, key = { "backend:${it.descriptor.id}" }) { backend ->
+                Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(backend.descriptor.name, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${backend.health.status.name.replace('_', ' ')} · ${backend.descriptor.kind.name.replace('_', ' ')}",
+                            color = if (backend.health.status == BackendStatus.INCOMPATIBLE) AppTheme.colors.accentRed else AppTheme.colors.accentCyan
+                        )
+                        backend.health.installedVersion?.let { Text("Installed version: $it", color = AppTheme.colors.textSecondary) }
+                        Text(backend.health.detail, color = AppTheme.colors.textSecondary)
+                        Text(backend.descriptor.securityBoundary, color = AppTheme.colors.textSecondary)
+                        Text("Operations: ${backendOperationSummary(backend.descriptor.capabilities)}", color = AppTheme.colors.textSecondary)
+                        backend.descriptor.limitations.forEach { limitation -> Text("• $limitation", color = AppTheme.colors.textSecondary) }
+                        val action = when (backend.descriptor.kind) {
+                            BackendKind.APP_WORKSPACE -> "OPEN APP WORKSPACE" to onOpenWorkspaceFiles
+                            BackendKind.TERMUX -> "OPEN TERMUX CONTROLS" to onOpenTermux
+                            else -> null
+                        }
+                        action?.let { (label, callback) -> Button(onClick = callback, modifier = Modifier.fillMaxWidth()) { Text(label) } }
+                    }
+                }
+            }
+            if (backends.none { it.descriptor.kind == BackendKind.REMOTE_CLOUD }) {
+                item { Text("No compatible remote cloud sandbox is configured. Add a provider adapter only after account, API, pricing, data-transfer and cancellation behavior are verified.", color = AppTheme.colors.textSecondary) }
+            }
+            item {
+                Text("REGISTERED CODING-AGENT ADAPTERS · ${codingAgents.size}", color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
+                Text("Only concrete adapters registered with verified metadata appear here. Research candidates and the existing cloud tool-agent are not presented as autonomous coding agents.", color = AppTheme.colors.textSecondary)
+            }
+            if (liveCodingAgents.isEmpty()) {
+                item {
+                    Text(
+                        if (codingAgents.isEmpty()) "No compatible coding-agent adapters currently registered; no external agent is installed or verified."
+                        else "No registered coding-agent adapters match ‘$query’.",
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
+            }
+            items(liveCodingAgents, key = { "agent:${it.descriptor.id}" }) { candidate ->
+                Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(candidate.descriptor.name, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Bold)
+                        Text("${candidate.health.availability.name.replace('_', ' ')} · ${candidate.descriptor.version ?: "version unknown"} · ${candidate.descriptor.license ?: "license not recorded"}", color = AppTheme.colors.accentCyan)
+                        Text(candidate.health.detail, color = AppTheme.colors.textSecondary)
+                        Text("Upstream: ${candidate.descriptor.upstreamUrl}", color = AppTheme.colors.textSecondary)
+                        Text("Documentation: ${candidate.descriptor.documentationUrl}", color = AppTheme.colors.textSecondary)
+                        Text("Capabilities: ${candidate.descriptor.capabilities.features.joinToString { it.name.replace('_', ' ') }.ifBlank { "none claimed" }}", color = AppTheme.colors.textSecondary)
+                        candidate.descriptor.limitations.forEach { Text("• $it", color = AppTheme.colors.textSecondary) }
                     }
                 }
             }
@@ -110,20 +175,36 @@ fun DevelopersScreen(
                     }
                 }
             }
-            if (entries.isEmpty()) item { Text("No developer categories match ‘$query’.", color = AppTheme.colors.textSecondary) }
+            if (entries.isEmpty() && liveBackends.isEmpty() && liveTools.isEmpty() && liveCodingAgents.isEmpty()) item {
+                Text("No developer categories, backends, tools, or coding agents match ‘$query’.", color = AppTheme.colors.textSecondary)
+            }
         }
     }
 }
+
+private fun backendOperationSummary(capabilities: BackendCapabilities): String = listOfNotNull(
+    "browse files".takeIf { capabilities.browseFiles },
+    "search files".takeIf { capabilities.searchFiles },
+    "edit/import/export".takeIf { capabilities.editFiles || capabilities.importExportFiles },
+    "execute commands".takeIf { capabilities.executeCommands },
+    "cancel commands".takeIf { capabilities.cancelCommands },
+    "bounded wait".takeIf { capabilities.boundedWait },
+    "resource limits".takeIf { capabilities.resourceLimits },
+    "per-task isolation".takeIf { capabilities.taskIsolation },
+    "persistent task history".takeIf { capabilities.persistentTaskHistory }
+).joinToString().ifBlank { "no enabled operations" }
 
 private fun dynamicStatus(
     letter: Char,
     state: CapabilityState,
     termuxAvailable: Boolean,
     termuxStatus: String,
-    runtimeStatus: String
+    runtimeStatus: String,
+    workspaceStatus: BackendStatus?
 ): String = when (letter) {
     'D', 'E', 'I', 'P', 'T', 'W' -> "${DeveloperCatalog.stateLabel(state)} · ${if (termuxAvailable) "$termuxStatus (package/backend availability; not isolated)" else termuxStatus}"
     'R', 'S' -> "${DeveloperCatalog.stateLabel(state)} · App-owned Linux runtime: $runtimeStatus. On Android 9+ PRoot command execution is disabled; Termux is a separate backend."
+    'C', 'F', 'X', 'Y' -> "${DeveloperCatalog.stateLabel(state)} · App workspace: ${workspaceStatus?.name?.replace('_', ' ') ?: "health not checked"}"
     else -> DeveloperCatalog.stateLabel(state)
 }
 

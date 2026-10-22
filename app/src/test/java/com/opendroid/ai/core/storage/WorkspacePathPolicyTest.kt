@@ -24,4 +24,19 @@ class WorkspacePathPolicyTest {
             assertThrows(IllegalArgumentException::class.java) { WorkspacePathPolicy.validateName(name) }
         }
     }
+
+    @Test
+    fun buildsSafeMoveTargetWithinWorkspace() {
+        assertEquals("notes.txt", WorkspacePathPolicy.moveTarget("project/notes.txt", ""))
+        assertEquals("archive/notes.txt", WorkspacePathPolicy.moveTarget("project/notes.txt", "archive"))
+    }
+
+    @Test
+    fun rejectsMovingFolderIntoItselfOrDescendant() {
+        listOf("../outside", "/absolute", "project/child", "project/child/deeper").forEach { destination ->
+            assertThrows(IllegalArgumentException::class.java) {
+                WorkspacePathPolicy.moveTarget("project", destination)
+            }
+        }
+    }
 }

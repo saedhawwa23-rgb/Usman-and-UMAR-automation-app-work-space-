@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -49,9 +52,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.opendroid.ai.core.storage.DeveloperWorkspaceFiles
 import com.opendroid.ai.core.storage.WorkspaceFileEntry
+import com.opendroid.ai.core.storage.WorkspaceDiffPreview
 import com.opendroid.ai.core.storage.WorkspacePathPolicy
 import com.opendroid.ai.ui.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -63,16 +68,23 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var currentPath by remember { mutableStateOf("") }
     var entries by remember { mutableStateOf<List<WorkspaceFileEntry>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchLimited by remember { mutableStateOf(false) }
     var editorPath by remember { mutableStateOf<String?>(null) }
     var content by remember { mutableStateOf("") }
+    var originalContent by remember { mutableStateOf("") }
+    var saveReviewOpen by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     var renameName by remember { mutableStateOf("") }
     var renameTarget by remember { mutableStateOf<WorkspaceFileEntry?>(null) }
     var renameOpen by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<WorkspaceFileEntry?>(null) }
+    var moveTarget by remember { mutableStateOf<WorkspaceFileEntry?>(null) }
+    var moveDestination by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
+    val saveDiff = remember(originalContent, content) { WorkspaceDiffPreview.create(originalContent, content) }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val imported = runCatching {
@@ -100,7 +112,7 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
                     target to text
                 }
             }
-            imported.onSuccess { (path, text) -> editorPath = path; content = text; status = "Imported ${path.substringAfterLast('/')} into the app workspace."; refresh++ }
+            imported.onSuccess { (path, text) -> editorPath = path; content = text; originalContent = text; status = "Imported ${path.substringAfterLast('/')} into the app workspace."; refresh++ }
                 .onFailure { status = it.message ?: "Import failed." }
         }
     }
@@ -118,10 +130,20 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(currentPath, refresh) {
+    LaunchedEffect(currentPath, refresh, searchQuery) {
         loading = true
-        val result = runCatching { withContext(Dispatchers.IO) { files.list(currentPath) } }
-        result.onSuccess { entries = it }
+        if (searchQuery.isNotBlank()) delay(150)
+        val result = runCatching {
+            withContext(Dispatchers.IO) {
+                if (searchQuery.isBlank()) {
+                    files.list(currentPath) to false
+                } else {
+                    val search = files.search(searchQuery)
+                    search.entries to search.limited
+                }
+            }
+        }
+        result.onSuccess { (found, limited) -> entries = found; searchLimited = limited }
             .onFailure { status = it.message ?: "Could not read the app workspace." }
         loading = false
     }
@@ -142,6 +164,14 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
             item {
                 Text("App-owned workspace · project files persist in this app's workspace folder. This is file storage, not an isolated execution sandbox.", color = AppTheme.colors.textSecondary)
                 Text("/${currentPath}", color = AppTheme.colors.accentCyan, fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Search workspace names and small text files") }
+                )
+                if (searchLimited) Text("Search stopped at its safe scan/result limit; narrow the query for more results.", color = AppTheme.colors.textSecondary)
                 if (currentPath.isNotBlank()) {
                     OutlinedButton(onClick = { currentPath = currentPath.substringBeforeLast('/', ""); editorPath = null }) { Text("UP ONE FOLDER") }
                 }
@@ -182,6 +212,7 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
                             Column(Modifier.weight(1f).clickable {
                                 if (entry.isDirectory) {
                                     currentPath = entry.relativePath
+                                    searchQuery = ""
                                     editorPath = null
                                 } else {
                                     scope.launch {
@@ -191,23 +222,32 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
                                                 files.read(entry.relativePath)
                                             }
                                         }
-                                        opened.onSuccess { editorPath = entry.relativePath; content = it; status = "Opened ${entry.name}." }
+                                        opened.onSuccess { editorPath = entry.relativePath; content = it; originalContent = it; status = "Opened ${entry.name}." }
                                             .onFailure { status = it.message ?: "Could not open this file." }
                                     }
                                 }
                             }.padding(vertical = 6.dp)) {
                                 Text(entry.name, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
-                                Text(if (entry.isDirectory) "Folder" else "${entry.sizeBytes} bytes", color = AppTheme.colors.textSecondary)
+                                Text(
+                                    if (searchQuery.isNotBlank()) entry.relativePath else if (entry.isDirectory) "Folder" else "${entry.sizeBytes} bytes",
+                                    color = AppTheme.colors.textSecondary
+                                )
                             }
                             IconButton(onClick = { renameTarget = entry; renameName = entry.name; renameOpen = true }) {
                                 Icon(Icons.Default.Edit, "Rename ${entry.name}")
                             }
                             IconButton(onClick = { deleteTarget = entry }) { Icon(Icons.Default.Delete, "Delete ${entry.name}") }
+                            TextButton(onClick = { moveTarget = entry; moveDestination = currentPath }) { Text("MOVE") }
                         }
                     }
                 }
             }
-            if (entries.isEmpty() && !loading) item { Text("This workspace folder is empty.", color = AppTheme.colors.textSecondary) }
+            if (entries.isEmpty() && !loading) item {
+                Text(
+                    if (searchQuery.isBlank()) "This workspace folder is empty." else "No workspace items match ‘$searchQuery’." ,
+                    color = AppTheme.colors.textSecondary
+                )
+            }
             editorPath?.let { path ->
                 item {
                     Spacer(Modifier.height(8.dp))
@@ -220,12 +260,9 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
-                            scope.launch {
-                                runCatching { withContext(Dispatchers.IO) { files.save(path, content) } }
-                                    .onSuccess { status = "Saved ${path.substringAfterLast('/')}."; refresh++ }
-                                    .onFailure { status = it.message ?: "Save failed." }
-                            }
-                        }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Save, contentDescription = null); Text(" SAVE") }
+                            if (content == originalContent) status = "No unsaved changes."
+                            else saveReviewOpen = true
+                        }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Save, contentDescription = null); Text(" REVIEW SAVE") }
                         OutlinedButton(onClick = {
                             renameTarget = WorkspaceFileEntry(path.substringAfterLast('/'), path, false, 0L)
                             renameName = path.substringAfterLast('/')
@@ -241,6 +278,31 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
         }
     }
 
+    if (saveReviewOpen) {
+        AlertDialog(
+            onDismissRequest = { saveReviewOpen = false },
+            title = { Text("Review changes before saving") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${saveDiff.removedLines} line(s) removed; ${saveDiff.addedLines} line(s) added. Review this bounded diff before writing to the app workspace.")
+                    Text(saveDiff.text, Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val path = editorPath
+                    val approvedContent = content
+                    saveReviewOpen = false
+                    if (path != null) scope.launch {
+                        runCatching { withContext(Dispatchers.IO) { files.save(path, approvedContent) } }
+                            .onSuccess { originalContent = approvedContent; status = "Saved ${path.substringAfterLast('/')}."; refresh++ }
+                            .onFailure { status = it.message ?: "Save failed." }
+                    }
+                }) { Text("APPROVE AND SAVE") }
+            },
+            dismissButton = { TextButton(onClick = { saveReviewOpen = false }) { Text("CANCEL") } }
+        )
+    }
     if (renameOpen) {
         AlertDialog(
             onDismissRequest = { renameOpen = false },
@@ -263,6 +325,45 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
                 }) { Text("RENAME") }
             },
             dismissButton = { TextButton(onClick = { renameOpen = false }) { Text("CANCEL") } }
+        )
+    }
+    moveTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { moveTarget = null },
+            title = { Text("Move ${target.name}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter a destination folder path relative to the app workspace. Leave blank for the workspace root. Existing items will never be overwritten.")
+                    OutlinedTextField(
+                        value = moveDestination,
+                        onValueChange = { moveDestination = it },
+                        singleLine = true,
+                        label = { Text("Destination folder") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        runCatching { withContext(Dispatchers.IO) { files.move(target.relativePath, moveDestination) } }
+                            .onSuccess { newPath ->
+                                val oldPath = target.relativePath
+                                fun remap(path: String): String = when {
+                                    path == oldPath -> newPath
+                                    path.startsWith("$oldPath/") -> newPath + path.removePrefix(oldPath)
+                                    else -> path
+                                }
+                                currentPath = remap(currentPath)
+                                editorPath = editorPath?.let(::remap)
+                                status = "Moved ${target.name} to ${if (moveDestination.isBlank()) "workspace root" else moveDestination}."
+                                refresh++
+                            }
+                            .onFailure { status = it.message ?: "Move failed." }
+                    }
+                    moveTarget = null
+                }) { Text("MOVE") }
+            },
+            dismissButton = { TextButton(onClick = { moveTarget = null }) { Text("CANCEL") } }
         )
     }
     deleteTarget?.let { target ->

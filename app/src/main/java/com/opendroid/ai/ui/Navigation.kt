@@ -308,16 +308,22 @@ fun OpenDroidNavigation(
                 viewModel = hiltViewModel(),
                 initialTab = 0,
                 onBack = { navController.popBackStack() },
-                onOpenToolAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) }
+                onOpenToolAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) },
+                onOpenWorkspaceFiles = { navController.navigate(OpenDroidRoutes.WORKSPACE_FILES) },
+                onOpenTermuxControls = { navController.navigate(OpenDroidRoutes.TERMUX) },
+                onOpenTerminal = { navController.navigate(OpenDroidRoutes.INTEGRATED_TERMINAL) }
             )
         }
 
         composable(OpenDroidRoutes.GITHUB_DISCOVERY) {
             DiscoveryScreen(
                 viewModel = hiltViewModel(),
-                initialTab = 1,
+                initialTab = 3,
                 onBack = { navController.popBackStack() },
-                onOpenToolAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) }
+                onOpenToolAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) },
+                onOpenWorkspaceFiles = { navController.navigate(OpenDroidRoutes.WORKSPACE_FILES) },
+                onOpenTermuxControls = { navController.navigate(OpenDroidRoutes.TERMUX) },
+                onOpenTerminal = { navController.navigate(OpenDroidRoutes.INTEGRATED_TERMINAL) }
             )
         }
 

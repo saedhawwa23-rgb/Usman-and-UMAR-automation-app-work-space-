@@ -1,87 +1,93 @@
-# Developer Workspace implementation audit
+# Developer workspace and agent ecosystem audit
 
-Audit date: 2026-10-22 UTC. Repository: `saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-`. Feature PR: [#2](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/pull/2). Final source commit tested by GitHub Actions: `b014437efdf0a3a0ca2730125310ada905f895a8`; base `main` remains `2715e497ef372c91b31cf57170166820fce4bc42`. Android identity in source and CI APK: `com.usmanandumar.app`, `minSdk 28`, native ABI `armeabi-v7a`.
+Audit date: 2026-10-22. Repository: [saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-). Work is on existing PR [#2](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/pull/2), branch `feature/developer-workspace-sandbox-search` to `main`. Before this revision, PR #2 was OPEN and UNMERGED; `main` was `2715e497ef372c91b31cf57170166820fce4bc42`. This change is being prepared only on the feature branch; no merge or change to `main` is authorized.
 
-**Status meanings:** PASS = operation directly exercised with evidence; FAIL = implemented behavior failed; BLOCKED = environment/backend prevents the required test or operation; NOT TESTED = no runtime evidence gathered. A UI screen alone is not proof of an external workflow.
+Android identity remains `applicationId com.usmanandumar.app`, `minSdk 28`, and ARM32 `armeabi-v7a` default. No physical Samsung Galaxy M10 test is claimed.
 
-## A–Z and discovery checklist
+## Scope of this revision
 
-| Feature | Implemented | Tested | Evidence | Remaining issue |
-|---|---|---|---|---|
-| A — AI development | Partial: existing model/provider discovery and chat/agent routes retained. | NOT TESTED | `DiscoveryScreen` calls the existing provider catalog; model selection updates the existing settings repository. | No coding task, code explanation, or live inference/credential test. |
-| B — Build systems | No in-app build runner claimed; existing remote Android CI is retained. | PASS (debug and unsigned release build) | Final CI `39673213883` built debug and unsigned release APKs successfully. | No on-device/in-app Gradle runner; release artifact is unsigned and not for distribution. |
-| C — Code editor | Partial: bounded UTF-8 text/configuration editor for app workspace. | PASS (compilation only) | Debug build compiles new `WorkspaceFilesScreen`; file operations have bounds and path checks. | No project-aware editor, syntax support, search-in-files, Git diff, or device-level UI operation test. |
-| D — Dependencies | Existing Termux allowlisted package task linked from the catalog. | NOT TESTED | `TermuxTask.INSTALL_DEV_TOOLS` invokes `pkg install` for Git, Python, Node.js, clang, make, cmake. | Termux, permission, network and package install/version were not exercised. |
-| E — Execution | Partial: each free-form Termux command now requires a confirmation step and explicit non-isolation warning. | PASS (build/UI compile) / NOT TESTED (execution) | API 28/36 instrumentation passed; `IntegratedTerminalScreen` routes to `LinuxTerminalViewModel.runViaTermux`. | No real shell invocation/timeout/process cleanup test. A timeout stops waiting but does not prove the Termux child process stopped. No sandbox quotas/cancellation. |
-| F — File manager | Partial: browse, create, edit/save, rename, import/export bounded text, confirm delete; only empty folders deletable. | PASS (path policy unit tests); NOT TESTED (UI/filesystem) | CI unit suite passed, including `WorkspacePathPolicyTest`; 510 tests, 0 failures. | No move, binary/archive support, search, restart/device UI test, or Termux checkout integration. |
-| G — GitHub | Existing public metadata/README search and GitHub workspace retained; public clone action remains. | NOT TESTED (network/clone) | Existing `DiscoveryRepository`; `TermuxGitHubClone` accepts canonical public GitHub URL and invokes Git. | Clone is shallow (`--depth=1`) into Termux home; no selected destination/import/open in app workspace; private cloning unavailable. |
-| H — HTTP/API tools | Existing APIs retained; no general request composer added. | NOT TESTED | Provider and GitHub repositories remain the actual API clients. | No generic response viewer or credential-redaction integration test. |
-| I — Installation | Existing Termux package installation exposed through A–Z. | NOT TESTED | Existing `INSTALL_DEV_TOOLS` command and Termux controls. | No AI-agent install, compatibility validation, uninstall or real device package test. |
-| J — Java/Kotlin | No in-app Android/JVM project compiler. | BLOCKED | Hosted CI compiles the app; local sandbox lacks Android SDK. | Requires hosted CI or another build backend; no Galaxy M10 compile/build run. |
-| K — Keys/credentials | Existing secure provider and GitHub credential workflows retained. | NOT TESTED | Existing credential store and GitHub Workspace screen. | No provider/GitHub credential setup, validation, or logging-redaction integration tests. |
-| L — Logs | Existing Logs route linked from Developers; existing task logs retained. | NOT TESTED (new shortcut) | `LogsScreen`/`HistoryViewModel` and Room task history exist. | Termux commands are not added to durable task history; duration/task queue/export not added. |
-| M — Models | Existing live catalog search and selection remain under unified search. | NOT TESTED (live service) | Existing `DiscoveryViewModel.searchAI`/`selectModel`; app compiles. | No provider API, missing credentials/network errors, filter/sort, or inference test. |
-| N — Network | No dedicated network diagnostics suite; catalog marks it unavailable. | NOT TESTED | A–Z capability state. | Connectivity/port diagnostics not implemented. |
-| O — Open-source agents | Existing cloud tool-agent linked; no unvalidated agent install claimed. | NOT TESTED | Existing `UniversalAgentScreen`. | No OpenHands/OpenBuilder/OpenManus/OpenSwarm installation or validated Termux path. |
-| P — Python | Termux development-tool bundle includes Python. | NOT TESTED | Existing `INSTALL_DEV_TOOLS` allowlisted task. | No venv, script execution, architecture/version, or testing workflow. |
-| Q — Quality checks | Existing repository CI runs lint and unit tests. | PASS | Final CI passed Android Lint and 510/510 unit tests; unsigned release compilation also passed. | No in-app quality runner. |
-| R — Runtimes | Existing Termux detection and app runtime status shown; screen distinguishes Termux shell from Alpine. | PASS (API 28/36 emulator suite) / NOT TESTED (Termux install) | CI instrumented tests passed at API 28 and 36; app-owned PRoot execution is explicitly disabled on Android 9+. | No physical handset or Termux dependency probe; no supported isolated rootfs execution on Android 9+. |
-| S — Sandbox | No security-isolated command sandbox. App-owned file storage and non-isolated Termux shell are distinguished. | BLOCKED | UI warns “NOT A SECURITY SANDBOX”; confirmation is authorization, not isolation. | Project-scoped isolation, quotas, cancellation, cleanup, task history/workflow, and boundary tests absent. |
-| T — Termux | Existing Termux controls reused; command screen has its own route, not a duplicate wrapper. | PASS (app compile/instrumentation) / NOT TESTED (Termux device) | CI passed on API 28/36; navigation routes Termux controls separately from shell. | No actual Termux installation, permission-denial, or package execution test. |
-| U — User permissions | Existing Permissions screen linked; backend Termux command permission/callback checks remain. | NOT TESTED | Existing `PermissionsScreen` and `TermuxIntegration.submit` checks. | No Android permission grant/denial or sensitive-action test. |
-| V — Version control | Existing GitHub browse/search and public clone actions retained. | NOT TESTED (Git operation) | Existing GitHub workspace/clone implementation. | No in-app diff/history/branch/commit/rollback; clone is shallow. |
-| W — Web development | Termux package bundle includes Node.js. | NOT TESTED | Existing dev-tools installation task. | No app project editor or preview/server manager; no Node install/run test. |
-| X — XML/configuration | Bounded UTF-8 editor supports XML text files. | PASS (compilation only) | Workspace editor allowlist contains `xml`; CI app compile passed. | No XML schema/manifest validator or file UI test. |
-| Y — YAML/automation | Bounded UTF-8 editor supports YAML text files. | PASS (compilation only) | Workspace editor allowlist contains `yml`/`yaml`; CI app compile passed. | No workflow parser/validator or file UI test. |
-| Z — Zero-to-project | Not implemented; catalog marks unavailable. | NOT TESTED | A–Z capability catalog. | No project scaffolder/environment/test/deliverable workflow. |
+- Added a shared backend contract with explicit capability flags, health/compatibility status, bounded command request/result types, cancellation semantics and an extensible in-memory registry. The registered adapters are the existing app-owned workspace, existing Termux integration and app PRoot status; no remote provider is registered by default. Remote adapters require provider-specific implementation and verified credentials/configuration.
+- Extended the existing app-workspace file manager with bounded search (5,000 entries, depth 12, 100 results), safe relative-path checks, symlink rejection, create/read/edit/save, import/export of supported UTF-8 text, rename, in-workspace move and confirmation-gated deletion (empty folders only). Approved saves display a bounded before/after diff and use staged/atomic file replacement when supported. Text operations are limited to 100 KiB. This is app file storage, not a command sandbox or per-project workspace.
+- Reused the existing Termux RUN_COMMAND bridge as the command backend. It requires explicit user confirmation in the terminal UI, uses bounded output and a 1–30 second wait, and reports its real boundary: Termux shell execution is not isolated and cannot be cancelled by this app. A timeout stops waiting and cleans the app-side callback state but may leave the Termux process running. Termux is optional.
+- Added a generic coding-agent lifecycle contract and empty-by-default registry with explicit metadata, capability flags, health, start/inspect/cancel/resume results and duplicate-ID rejection. It is visible through the same `DeveloperToolsViewModel` search as live tools/backends in Developers and Discovery. No coding-agent adapters are currently registered; the existing CloudToolAgent is explicitly kept separate because it is not an autonomous coding-agent integration. Centralized filtering reads only the current process registries. The A–Z entries remain a static category guide, not a downloadable or auto-updating package catalog. Tool version/license/update/install metadata and remote release feeds are not yet implemented.
+- Discovery offers one text field with AI/model, sandbox/backend, developer-tools, GitHub-project and updates filters. Existing AI and GitHub behavior is retained; a missing update feed is shown as unavailable, not as an installed tool.
+- The A–Z guide describes existing functions and marks unsupported categories explicitly. It does not install OpenHands, OpenBuilder, OpenManus, OpenSwarm or another candidate.
 
-## Integrated workflows and project requirements
+## Backend status and boundaries
 
-| Feature | Implemented | Tested | Evidence | Remaining issue |
-|---|---|---|---|---|
-| Developers destination | Partial: reachable from existing Tools area; searchable A–Z catalog and live registry snapshot. | PASS (compile); NOT TESTED (screen interactions) | Exact source commit passed debug build, lint and emulator instrumentation. | No UI-level navigation/search/live-registry interaction test. |
-| Unified AI/GitHub/Developer search | Partial: one Discovery screen with three modes; GitHub keyword/direct lookup share one field; current process connector/tool registry displayed read-only. | PASS (compile); NOT TESTED (external services) | `DiscoveryScreen`, `DeveloperToolsViewModel`, and existing real provider/GitHub operations. | No external API, live empty/error, model-use, or UI interaction test. |
-| Public GitHub discovery | Existing repository metadata, owner/name, description, language, URL, README/root files and keyword search retained. | NOT TESTED | Existing GitHub REST client source inspected; no network call performed. | No API rate-limit/network/README test. |
-| Clone/open in app workspace | Not implemented; public clone starts in Termux home. | BLOCKED | `TermuxGitHubClone` uses `git clone --depth=1`; updated UI/result says no app-workspace import. | No selected destination, full history, private clone, opened sandbox, or edit/diff flow. |
-| Persistent project/task workflow | Partial: app-owned workspace and pre-existing Room agent task history. | NOT TESTED | Existing `StorageWorkspaceProvider`, `TaskHistoryDao`; new browser uses app workspace. | No restart persistence check for new UI; shell commands not recorded as tasks. |
-| Android identity and ABI | Identity unchanged; debug APK contains ARMv7 native code. | PASS (CI evidence) | CI APK badging reports `com.usmanandumar.app` and `armeabi-v7a`; API 28 instrumented job passed; Gradle config declares minSdk 28. | No physical Samsung Galaxy M10 test. |
-| Reference APK | Not available in attachments. | BLOCKED | Upload directory contained only the prompt text; no `.apk` was present in upload/Downloads/temp. | `app-debug.apk` reference artifact mentioned in the prompt was not accessible. |
-| Unit tests | Existing suite plus catalog/path-policy tests. | PASS | Corrected run report: 510 tests, 0 failures, 0 skipped; test report artifact available with CI run. | Tests do not cover real Termux, GitHub/provider APIs, or device UI workflows. |
-| Android Lint | Existing lint check. | PASS | Android CI run `39671867043`, Android Lint job successful. | No physical-device behavior validation. |
-| Debug build/APK | Built and uploaded from corrected feature source commit. | PASS | `assembleDebug`, APK metadata/ABI checks and PRoot-in-APK verification passed. | Debug APK is for testing, not a signed production release. See artifact/hash below. |
-| Instrumentation | API 28 and API 36 emulator jobs. | PASS | Both Android CI instrumented-test jobs passed. | Emulator results are not a Galaxy M10 physical-device test. |
-| Unsigned release build | CI-only unsigned validation artifact; not a production deliverable. | PASS | Final CI run `39673213883` completed `Build unsigned release APK` and uploaded artifact `app-release-unsigned`. | It is intentionally unsigned; no release signing credentials were configured. |
-| Existing major navigation areas | Source changes are localized; existing Chat, Plan, Memory, Social, Tools, Macros, Logs, Settings remain. | NOT TESTED | Static call-site/navigation source review; CI app compilation and instrumentation passed. | No full UI regression walkthrough across every screen/control. |
-| Static integrity | Static source checks. | PASS (static only) | `git diff --check`; 26 catalog letters once/in order; workspace path/size safeguards and app ID/minSdk assertions. | Static checks do not prove live API/Termux workflows. |
+| Backend | Current status | Verified capability/boundary | Not implemented or tested |
+|---|---|---|---|
+| App-owned workspace | Available when health check can read/write its app-specific directory | Bounded text-file operations and safe-path checks; this is storage only | No shell execution, per-project isolation, Git metadata, repository import, task queue/history, checkpoint/rollback, or device UI test |
+| Termux | Requires Termux 0.109+ result callback support, Android RUN_COMMAND permission, and `allow-external-apps=true`; actual execution availability is not verified here | Existing command API; 30-second maximum wait and bounded output; command submission/results are not isolated from Termux files/processes/credentials | No child-process cancellation, hard CPU/RAM/disk/network quotas, durable per-project task log, or real-device permission/command test |
+| App-owned Alpine/PRoot | Incompatible for command execution on the supported app target; UI reports runtime status | PRoot is userspace emulation and not a security boundary; app source documents its command path disabled for this Android range | No claim that a root filesystem being installed means it runs; no execution, install or smoke test |
+| Android-local containers | Not available in this app | No Android Docker daemon/kernel isolation is claimed | No Docker/Podman backend or container image run |
+| Remote Daytona/E2B/custom | Interface and programmatic registry hook only; no adapter configured | Registry rejects incorrect backend kind/duplicate IDs | No provider API, authentication, billing/terms UI, file sync, resource enforcement, remote cancellation, cleanup or smoke test |
 
-## Build, CI, and artifact evidence
+No backend is labelled “securely isolated.” Command approval is authorization, not isolation. The app workspace is visible to this app's components; Termux commands execute in the user's Termux environment. Do not send credentials to an agent or put them in command output.
 
-- Local `./gradlew testDebugUnitTest assembleDebug --stacktrace` cannot configure in this sandbox because no Android SDK is installed (`ANDROID_HOME` unset and no `sdk.dir`). This is an environment limitation; hosted GitHub Actions supplied the Android SDK.
-- Final CI run [39673213883](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/actions/runs/39673213883) tested commit `b014437efdf0a3a0ca2730125310ada905f895a8`; all six jobs passed: unit tests/debug build, Android Lint, API 28/36 instrumentation, PRoot/Alpine provenance, unsigned release build.
-- The 510-test report had 0 failures and 0 skipped. Debug APK artifact [app-debug-armv7](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/actions/runs/39673213883/artifacts/12379569437): 77,900,768 bytes; SHA-256 `620e6e7d8c9e282e36a54505dcd8d3363bc3d9867b24df2cb0936295b6681cae`. APK badging: package `com.usmanandumar.app`, ABI `armeabi-v7a`; Gradle config declares minSdk 28 and API 28 emulator tests passed. It is a debug-variant APK for testing, not a production release.
-- CI also built and uploaded `app-release-unsigned`; it is not signed and must not be distributed. No production release signing credentials were configured.
-- A previous transient SDK/NDK download attempt had `Error reading Zip content from a SeekableByteChannel`; the final full run succeeded. The local sandbox still has no Android SDK, so local Gradle tests/build remain unavailable; hosted CI is the evidence.
-- No live GitHub/provider API or Termux execution was performed; no private credentials were added.
-- The PR remains OPEN and UNMERGED. `main` remains at `2715e497ef372c91b31cf57170166820fce4bc42`.
+## Agent-candidate research
 
-## New and changed files
+Official-source review is underway. The six completed candidates (OpenHands, OpenBuilder, OpenManus, OpenSwarm, OpenAI Codex CLI and Gemini CLI) are summarized with official repository/docs, observed release/license, runtime requirements, Android/ARM32 fit and security caveats in [agent-compatibility-research.md](agent-compatibility-research.md). Hermes Agent review is also completed and appended there. None is installed, exposed as available, or locally tested by this revision. In particular, the verified OpenHands/OpenBuilder/OpenManus/OpenSwarm identities have not been substituted for each other; native API 28 ARM32 compatibility is not claimed. Remaining candidate and Daytona/E2B research is still pending in the official-source workflow and will be added before finalizing this audit.
 
-New:
+## Google Drive and credentials
+
+The Android repository has no Google Drive API integration, Drive scopes, Drive OAuth implementation or Google Android OAuth client ID/resource. No `google-services.json` or Drive API operation is configured in the inspected source. The configured `Google Workspace` Manus connector exists but is disabled; it does not configure Android APK OAuth. Therefore there is no Drive browse/search/import/export/upload/save operation to test, and no Drive-connected claim. Official setup/least-privilege scope/signing/upload evidence and the exact Cloud project, OAuth, consent and test-account prerequisites are recorded in [google-drive-evidence.md](google-drive-evidence.md). To proceed, the owner must configure a Google Cloud project, enable Drive API, register an Android OAuth client for this package and the relevant signing-certificate SHA-1, set consent/scopes and authorize a test account; do not embed a Web client secret in the APK.
+
+Existing GitHub OAuth and provider API-key stores use Android Keystore-backed AES-GCM storage in the inspected source. This is not evidence that OAuth clients/providers are configured or live. No credential values were added to this revision.
+
+## A–Z functional status
+
+- **A (AI/agents):** Existing configured model/chat/cloud-tool-agent paths; external coding-agent candidates remain uninstalled/unverified.
+- **B/J/Q (build, Android compiler, quality runner):** No in-app Android project build or quality runner; existing remote GitHub CI is separate.
+- **C/F/X/Y (editor, files, XML/config, YAML):** Supported UTF-8 files up to 100 KiB in the app workspace, with create/import/browse/search/edit/diff-preview/approve-save/rename/move/export/delete. No syntax engine, project-wide diff, Git history, checkpoint or rollback.
+- **D/I/P/W (packages, installation, Python, web tools):** Existing optional Termux package controls only. No app-managed installation/version/health catalog for external agents.
+- **E/T (execution, Termux):** Existing Termux RUN_COMMAND only, with explicit confirmation, bounded output and bounded wait; not isolated and not cancellable by this app.
+- **G/V (GitHub/version control):** Existing repository discovery and authorized GitHub browsing retained; existing clone remains public-only, shallow and in Termux home. No full-history clone into app workspace, Git status/diff/branch/commit/rollback workflow.
+- **H/N (HTTP/network diagnostics):** No general API client or network-diagnostic suite.
+- **K (credentials):** Provider and GitHub secrets use Keystore-backed encrypted storage; live provider/GitHub authentication was not exercised. Google Drive OAuth is absent.
+- **L (logs/task state):** Existing app conversation/task logs remain; shell results are transient. No separate project task queue/history or artifact ledger.
+- **M (models):** Existing live model search/selection retained; no provider/network/inference test in this revision.
+- **O (open-source agents):** Candidate research only; none is installed or adapted for this Android app.
+- **R/S (runtime/sandbox):** App PRoot execution incompatible; Termux optional and non-isolated; no local container or remote cloud adapter.
+- **U (approval):** Confirmations gate the new workspace deletes, reviewed saves, and free-form Termux commands; confirmations do not provide isolation.
+- **Z (zero-to-project):** No end-to-end project scaffolder/reproducible build workflow.
+
+## Verification status
+
+- Static checks in the sandbox: passed for `git diff --check`, no conflict markers, app ID, `minSdk 28`, ARM32 ABI declaration and exactly one A–Z entry in order.
+- Local Gradle `testDebugUnitTest assembleDebug`: BLOCKED before compilation because no Android SDK is installed and `ANDROID_HOME`/`sdk.dir` is absent. This is an environment limitation; it is not a test pass or source failure.
+- GitHub Actions on this revised source commit: **PENDING**. The exact test count, lint, debug/release build, API 28/API 36 emulator tests and APK metadata will be added only after the final PR commit's CI completes.
+- Physical Galaxy M10 test: **NOT RUN**.
+- Drive OAuth/API test: **BLOCKED**; no Drive integration or OAuth setup exists.
+- External-agent installs/smoke tests: **NOT RUN**; official-source research only.
+
+## Current changed and added files
+
+Modified application files:
 - `app/src/main/java/com/opendroid/ai/core/storage/DeveloperWorkspaceFiles.kt`
+- `app/src/main/java/com/opendroid/ai/core/termux/TermuxIntegration.kt`
+- `app/src/main/java/com/opendroid/ai/ui/Navigation.kt`
 - `app/src/main/java/com/opendroid/ai/ui/screens/DeveloperCatalog.kt`
 - `app/src/main/java/com/opendroid/ai/ui/screens/DevelopersScreen.kt`
+- `app/src/main/java/com/opendroid/ai/ui/screens/DiscoveryScreen.kt`
 - `app/src/main/java/com/opendroid/ai/ui/screens/WorkspaceFilesScreen.kt`
 - `app/src/main/java/com/opendroid/ai/ui/viewmodel/DeveloperToolsViewModel.kt`
+- `app/src/main/java/com/opendroid/ai/core/agent/DeveloperAgentRegistry.kt`
+
+Modified tests:
 - `app/src/test/java/com/opendroid/ai/core/storage/WorkspacePathPolicyTest.kt`
 - `app/src/test/java/com/opendroid/ai/ui/DeveloperCatalogTest.kt`
+- `app/src/test/java/com/opendroid/ai/core/agent/DeveloperAgentRegistryTest.kt`
+
+Added files:
+- `app/src/main/java/com/opendroid/ai/core/backend/SandboxBackend.kt`
+- `app/src/main/java/com/opendroid/ai/core/storage/WorkspaceDiffPreview.kt`
+- `app/src/test/java/com/opendroid/ai/core/backend/BackendContractTest.kt`
+- `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceAtomicWriterTest.kt`
+- `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceDiffPreviewTest.kt`
+- `app/src/test/java/com/opendroid/ai/core/termux/TermuxOutputPolicyTest.kt`
+- `docs/agent-compatibility-research.md`
+- `docs/google-drive-evidence.md`
 - `docs/developer-workspace-audit.md`
 
-Modified:
-- `app/src/main/java/com/opendroid/ai/core/connector/CloudToolAgent.kt`
-- `app/src/main/java/com/opendroid/ai/ui/Navigation.kt`
-- `app/src/main/java/com/opendroid/ai/ui/screens/CapabilitiesScreen.kt`
-- `app/src/main/java/com/opendroid/ai/ui/screens/DiscoveryScreen.kt`
-- `app/src/main/java/com/opendroid/ai/ui/screens/IntegratedTerminalScreen.kt`
-- `app/src/main/java/com/opendroid/ai/ui/viewmodel/DiscoveryViewModel.kt`
-
-No credentials or tokens were added to source.
+No `main` change or PR merge is part of this work.

@@ -1,10 +1,6 @@
 package com.opendroid.ai.ui.screens
 
-/**
- * Honest capability inventory for the Developers hub and unified discovery search.
- * `existing` means an existing app screen/integration is available; it does not
- * imply that a device dependency or credential is installed/configured.
- */
+/** Category guide for current app integrations; versioned tools appear in the live backend/tool registries. */
 data class DeveloperCapability(
     val letter: Char,
     val title: String,
@@ -13,38 +9,48 @@ data class DeveloperCapability(
     val action: DeveloperAction? = null
 )
 
-enum class CapabilityState { EXISTING_INTEGRATION, DEVICE_OR_CREDENTIAL_REQUIRED, NOT_AVAILABLE }
+enum class CapabilityState {
+    AVAILABLE,
+    COMPATIBLE,
+    INSTALLABLE,
+    INSTALLED,
+    VERIFIED_WORKING,
+    REQUIRES_CONFIGURATION,
+    INCOMPATIBLE,
+    NOT_TESTED,
+    NOT_AVAILABLE
+}
 
 enum class DeveloperAction { AI_MODELS, GITHUB_SEARCH, GITHUB_WORKSPACE, TERMUX, TERMINAL, WORKSPACE_FILES, AGENT, PERMISSIONS, LOGS }
 
 object DeveloperCatalog {
     val all: List<DeveloperCapability> = listOf(
-        DeveloperCapability('A', "AI development", "Discover configured provider catalogs, select a model, and use the existing chat/agent flows.", CapabilityState.EXISTING_INTEGRATION, DeveloperAction.AI_MODELS),
-        DeveloperCapability('B', "Build systems", "No in-app Gradle/Android build runner is provided. Builds run in the repository's GitHub Actions workflow or an independently configured environment.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('C', "Code editor", "The app does not currently include a project file browser/editor or save/diff workflow.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('D', "Dependencies", "Termux package installation is available when Termux and command permission are ready; packages are installed in Termux, not in an isolated project.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMUX),
-        DeveloperCapability('E', "Execution", "The existing command screen accepts a user-entered Termux command and captures output/exit status when Termux, callback support, permission, and its external-command setting are ready. It is not isolated.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMINAL),
-        DeveloperCapability('F', "File manager", "Browse the app-owned workspace, create folders/files, edit supported UTF-8 text files up to 100 KB, rename items, and delete files or empty folders with confirmation.", CapabilityState.EXISTING_INTEGRATION, DeveloperAction.WORKSPACE_FILES),
-        DeveloperCapability('G', "GitHub", "Search public repositories, inspect metadata/README, and use the authenticated GitHub workspace. Public clone runs in Termux; it does not open a project in an app sandbox.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.GITHUB_SEARCH),
-        DeveloperCapability('H', "HTTP / API tools", "Provider and GitHub APIs are used by existing features; there is no general-purpose HTTP request composer in the app.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('I', "Installation", "The existing Termux screen can refresh packages and install its supported development-tool bundle after permission checks.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMUX),
-        DeveloperCapability('J', "Java / Kotlin", "No on-device Java/Kotlin project compiler or Android Gradle build workflow is currently available in-app.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('K', "Keys and credentials", "Existing provider and GitHub credentials use app credential-storage integrations; configure them through the provider discovery and GitHub authentication flows.", CapabilityState.EXISTING_INTEGRATION, DeveloperAction.AI_MODELS),
-        DeveloperCapability('L', "Logs", "Open existing app task, conversation, and diagnostic logs. Termux command results remain in the Termux/terminal UI during the current process.", CapabilityState.EXISTING_INTEGRATION, DeveloperAction.LOGS),
-        DeveloperCapability('M', "Models", "Search live model catalogs for supported providers and select a returned model. A catalog result is not proof of inference availability.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.AI_MODELS),
-        DeveloperCapability('N', "Network diagnostics", "No dedicated connectivity/port diagnostic suite is exposed in the app.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('O', "Open-source agents", "The cloud tool-agent screen exists; OpenHands, OpenBuilder, OpenManus, and OpenSwarm are not claimed as installed or validated integrations.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.AGENT),
-        DeveloperCapability('P', "Python", "Python can be installed in Termux through its package manager when the existing Termux requirements are met; no Python project manager is included.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMUX),
-        DeveloperCapability('Q', "Quality checks", "The repository contains CI workflows, but there is no in-app workflow status or local code-quality runner.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('R', "Runtimes", "An Alpine/PRoot runtime path exists, but app-owned PRoot is disabled on Android 9+; Termux availability is checked separately.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMUX),
-        DeveloperCapability('S', "Sandbox", "The current free-form Termux command screen is not a security-isolated project sandbox and does not provide workspace quotas, a file manager, task cancellation, or project-scoped task history.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMINAL),
-        DeveloperCapability('T', "Termux", "Reuse the existing Termux detection, permission checks, allowlisted tasks, and command-result callbacks. Termux absence does not block normal app features.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMUX),
-        DeveloperCapability('U', "User permissions", "Review Android permissions and the app's permission guidance. Sensitive execution must still use the relevant Android/Termux authorization.", CapabilityState.EXISTING_INTEGRATION, DeveloperAction.PERMISSIONS),
-        DeveloperCapability('V', "Version control", "GitHub repository discovery and authenticated repository browsing are available; an in-app Git diff/commit/rollback UI is not.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.GITHUB_WORKSPACE),
-        DeveloperCapability('W', "Web development", "Node.js can be installed in Termux through the supported development-tool bundle; no in-app project editor or preview server UI is provided.", CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED, DeveloperAction.TERMUX),
-        DeveloperCapability('X', "XML / configuration", "No in-app XML, manifest, Gradle, or workflow editor/validator is currently provided.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('Y', "YAML / automation", "No in-app GitHub Actions YAML or automation validator is currently provided.", CapabilityState.NOT_AVAILABLE),
-        DeveloperCapability('Z', "Zero-to-project setup", "There is no guided project scaffolder that creates, builds, tests, and verifies a deliverable end-to-end.", CapabilityState.NOT_AVAILABLE)
+        DeveloperCapability('A', "AI development and agent frameworks", "Search configured provider model catalogs and use the existing chat/cloud-tool-agent flows. External coding-agent frameworks are not installed or validated by this app.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.AI_MODELS),
+        DeveloperCapability('B', "Build systems and build diagnostics", "No compatible in-app Gradle/Android build runner is currently available. Repository CI can run separately in GitHub Actions.", CapabilityState.NOT_AVAILABLE),
+        DeveloperCapability('C', "Code editors and source editing", "Open, edit and save supported UTF-8 text/configuration files up to 100 KB in the app workspace. Syntax tooling, project-wide diffs and checkpoints are not available.", CapabilityState.AVAILABLE, DeveloperAction.WORKSPACE_FILES),
+        DeveloperCapability('D', "Dependencies and package managers", "Termux package installation can be requested through existing controls when Termux, its permission and configuration are ready. Packages live in Termux, not an isolated project.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.TERMUX),
+        DeveloperCapability('E', "Execution engines and process control", "Existing command entry executes user-approved commands in Termux and can capture a bounded result. The app cannot cancel the Termux process, enforce resource quotas or isolate it per project.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.TERMINAL),
+        DeveloperCapability('F', "File manager and workspace operations", "Browse and search names/small text files; create, import, export, edit, rename and move workspace items; delete files or empty folders with confirmation. Operations are bounded and path-safe.", CapabilityState.AVAILABLE, DeveloperAction.WORKSPACE_FILES),
+        DeveloperCapability('G', "Git, GitHub and version control", "Search public GitHub repositories, inspect metadata/README, and browse an authorized account in GitHub Workspace. The existing Termux clone is public-only, shallow and stored outside the app workspace.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.GITHUB_SEARCH),
+        DeveloperCapability('H', "HTTP clients and API testing", "Provider and GitHub APIs are used by existing app features, but no general-purpose HTTP client/API test tool is exposed. No compatible general tool is currently available.", CapabilityState.NOT_AVAILABLE),
+        DeveloperCapability('I', "Installation, updates and integrity checks", "Termux package refresh/install controls exist. No app update channel, verified release-manifest checker, artifact provenance workflow or in-app installer is configured.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.TERMUX),
+        DeveloperCapability('J', "Java, Kotlin, Gradle and Android tools", "No compatible on-device Java/Kotlin/Gradle project compiler or Android build workflow is currently available in the app.", CapabilityState.NOT_AVAILABLE),
+        DeveloperCapability('K', "Key, OAuth and credential management", "Provider API keys and GitHub OAuth tokens use Android Keystore-backed AES-GCM storage. Provider/GitHub authorization still requires the user's own configuration; no secret values are shown here.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.AI_MODELS),
+        DeveloperCapability('L', "Logs, diagnostics and task history", "Open existing app task/conversation/diagnostic logs. Termux command results are transient and not stored as per-project task history.", CapabilityState.AVAILABLE, DeveloperAction.LOGS),
+        DeveloperCapability('M', "Models and AI-provider configuration", "Search live model catalogs and select a returned model. Provider connectivity, model availability, inference success and billing status remain distinct checks.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.AI_MODELS),
+        DeveloperCapability('N', "Network diagnostics and connectivity", "No dedicated DNS, port, proxy, or connectivity diagnostic suite is exposed. No compatible network-diagnostics tool is currently available.", CapabilityState.NOT_AVAILABLE),
+        DeveloperCapability('O', "Open-source agents and orchestration", "The cloud tool-agent screen is not an autonomous coding-agent integration. OpenHands, OpenBuilder, OpenManus, OpenSwarm and other external agents remain unvalidated and are not presented as installed.", CapabilityState.NOT_TESTED, DeveloperAction.AGENT),
+        DeveloperCapability('P', "Python and compatible language runtimes", "Python can be installed in Termux through its package manager when Termux setup is complete. It is not an app-managed project runtime and is not isolated.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.TERMUX),
+        DeveloperCapability('Q', "Quality checks, linting and test runners", "Repository CI contains test/build workflows, but no in-app source-quality runner or live workflow-status integration is available.", CapabilityState.NOT_AVAILABLE),
+        DeveloperCapability('R', "Runtimes, Linux userspace and environment management", "The app-owned Alpine/PRoot path is incompatible with this app's supported Android API range for command execution. Termux is a separate optional environment, not a complete app-managed Linux distribution.", CapabilityState.INCOMPATIBLE, DeveloperAction.TERMUX),
+        DeveloperCapability('S', "Sandbox backends, policies and permissions", "The app workspace provides file operations only; Termux commands run in the user's Termux environment. This is not an isolated per-project command sandbox; process cancellation, resource quotas and project task history are not currently available.", CapabilityState.NOT_AVAILABLE, DeveloperAction.WORKSPACE_FILES),
+        DeveloperCapability('T', "Termux and Termux:API integration", "Reuse the existing Termux detection, version/permission checks, allowlisted tasks, and bounded command-result callbacks. Termux is optional for ordinary app functionality.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.TERMUX),
+        DeveloperCapability('U', "User approvals and access controls", "Review Android permissions and app guidance. Destructive workspace deletes require confirmation; command approval does not create an execution sandbox.", CapabilityState.AVAILABLE, DeveloperAction.PERMISSIONS),
+        DeveloperCapability('V', "Version control, diffs and rollback", "Public GitHub discovery and configured repository browsing are available. No in-app full-history clone into the shared workspace, diff, commit, checkpoint or rollback UI is implemented.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.GITHUB_WORKSPACE),
+        DeveloperCapability('W', "Web development and local preview", "Node.js can be installed in Termux through the existing development-tool bundle. No app-managed project preview server or isolated web-development workflow is available.", CapabilityState.REQUIRES_CONFIGURATION, DeveloperAction.TERMUX),
+        DeveloperCapability('X', "XML, JSON and configuration tools", "The workspace editor can open/save supported XML, JSON and other UTF-8 text files up to 100 KB. Schema validation and syntax-aware formatting are not provided.", CapabilityState.AVAILABLE, DeveloperAction.WORKSPACE_FILES),
+        DeveloperCapability('Y', "YAML, workflow and automation tools", "The workspace editor can open/save supported YAML and workflow text files up to 100 KB. Workflow validation, scheduling and automation execution are not provided here.", CapabilityState.AVAILABLE, DeveloperAction.WORKSPACE_FILES),
+        DeveloperCapability('Z', "Zero-to-project setup and reproducible environments", "There is no guided project scaffolder that creates, builds, tests and verifies a deliverable end-to-end. No compatible scaffolding tool is currently available.", CapabilityState.NOT_AVAILABLE)
     )
 
     fun search(query: String): List<DeveloperCapability> {
@@ -58,8 +64,14 @@ object DeveloperCatalog {
     }
 
     fun stateLabel(state: CapabilityState): String = when (state) {
-        CapabilityState.EXISTING_INTEGRATION -> "EXISTING APP INTEGRATION"
-        CapabilityState.DEVICE_OR_CREDENTIAL_REQUIRED -> "DEVICE / SETUP REQUIRED"
-        CapabilityState.NOT_AVAILABLE -> "NOT AVAILABLE IN APP"
+        CapabilityState.AVAILABLE -> "AVAILABLE"
+        CapabilityState.COMPATIBLE -> "COMPATIBLE"
+        CapabilityState.INSTALLABLE -> "INSTALLABLE"
+        CapabilityState.INSTALLED -> "INSTALLED"
+        CapabilityState.VERIFIED_WORKING -> "VERIFIED WORKING"
+        CapabilityState.REQUIRES_CONFIGURATION -> "REQUIRES CONFIGURATION"
+        CapabilityState.INCOMPATIBLE -> "INCOMPATIBLE"
+        CapabilityState.NOT_TESTED -> "NOT TESTED"
+        CapabilityState.NOT_AVAILABLE -> "NO COMPATIBLE TOOLS CURRENTLY AVAILABLE"
     }
 }
