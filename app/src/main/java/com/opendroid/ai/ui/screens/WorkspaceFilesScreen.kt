@@ -1,7 +1,11 @@
 package com.opendroid.ai.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +59,12 @@ import com.opendroid.ai.core.storage.DeveloperWorkspaceFiles
 import com.opendroid.ai.core.storage.WorkspaceFileEntry
 import com.opendroid.ai.core.storage.WorkspaceDiffPreview
 import com.opendroid.ai.core.storage.WorkspacePathPolicy
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.opendroid.ai.ui.theme.AppTheme
+import com.opendroid.ai.ui.viewmodel.GoogleDriveViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,6 +75,11 @@ import java.io.ByteArrayOutputStream
 fun WorkspaceFilesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val files = remember(context) { DeveloperWorkspaceFiles(context.applicationContext) }
+    val driveViewModel: GoogleDriveViewModel = hiltViewModel()
+    val driveFiles by driveViewModel.files.collectAsState()
+    val driveBreadcrumbs by driveViewModel.breadcrumbs.collectAsState()
+    val driveBusy by driveViewModel.busy.collectAsState()
+    val driveMessage by driveViewModel.message.collectAsState()
     val scope = rememberCoroutineScope()
     var currentPath by remember { mutableStateOf("") }
     var entries by remember { mutableStateOf<List<WorkspaceFileEntry>>(emptyList()) }
@@ -84,7 +99,78 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
+    var driveAction by remember { mutableStateOf<DriveOperation?>(null) }
+    var driveTargetFolder by remember { mutableStateOf<com.opendroid.ai.data.repository.GoogleDriveFile?>(null) }
     val saveDiff = remember(originalContent, content) { WorkspaceDiffPreview.create(originalContent, content) }
+    fun dispatchDriveToken(token: String?) {
+        val operation = driveAction
+        val targetFolder = driveTargetFolder
+        driveAction = null
+        driveTargetFolder = null
+        if (token.isNullOrBlank()) {
+            status = "Google Drive did not return an access token. Authorize the action again."
+            return
+        }
+        when (operation) {
+            DriveOperation.BROWSE -> driveViewModel.browseRoot(token)
+            DriveOperation.OPEN_FOLDER -> targetFolder?.let { driveViewModel.openFolder(token, it) }
+            DriveOperation.UP_FOLDER -> driveViewModel.goUp(token)
+            DriveOperation.EXPORT -> driveViewModel.exportWorkspace(token)
+            null -> Unit
+        }
+    }
+    val driveAuthorizationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val activity = context.findActivity()
+            val authorization = runCatching {
+                requireNotNull(activity) { "Could not access the Google authorization result." }
+                Identity.getAuthorizationClient(activity).getAuthorizationResultFromIntent(result.data)
+            }
+            authorization.onSuccess { dispatchDriveToken(it.accessToken) }
+                .onFailure { failure -> status = failure.message ?: "Google Drive authorization failed."; driveAction = null; driveTargetFolder = null }
+        } else {
+            status = "Google Drive authorization was cancelled."
+            driveAction = null
+            driveTargetFolder = null
+        }
+    }
+    fun requestDriveAuthorization(
+        operation: DriveOperation,
+        folder: com.opendroid.ai.data.repository.GoogleDriveFile? = null
+    ) {
+        val activity = context.findActivity()
+        if (activity == null) {
+            status = "Google Drive authorization is unavailable in this screen."
+            return
+        }
+        driveAction = operation
+        driveTargetFolder = folder
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(Scope(GOOGLE_DRIVE_FILE_SCOPE)))
+            .build()
+        Identity.getAuthorizationClient(activity).authorize(request)
+            .addOnSuccessListener { authorization ->
+                if (authorization.hasResolution()) {
+                    val pending = authorization.pendingIntent
+                    if (pending == null) {
+                        status = "Google Drive authorization needs a resolution, but none was provided."
+                        driveAction = null
+                        driveTargetFolder = null
+                    } else {
+                        driveAuthorizationLauncher.launch(IntentSenderRequest.Builder(pending.intentSender).build())
+                    }
+                } else {
+                    dispatchDriveToken(authorization.accessToken)
+                }
+            }
+            .addOnFailureListener { failure ->
+                status = failure.message ?: "Could not request Google Drive authorization."
+                driveAction = null
+                driveTargetFolder = null
+            }
+    }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val imported = runCatching {
@@ -177,6 +263,47 @@ fun WorkspaceFilesScreen(onBack: () -> Unit) {
                 }
                 if (loading) Text("Loading workspace…", color = AppTheme.colors.textSecondary)
                 status?.let { Text(it, color = AppTheme.colors.textSecondary) }
+            }
+            item {
+                Text("GOOGLE DRIVE", fontWeight = FontWeight.Bold)
+                Text(
+                    "Drive access is requested only for the action you choose. The limited drive.file scope browses files and folders created by, opened with, or shared with this app; it does not expose all of Drive. Export includes the complete app workspace, including any .git history.",
+                    color = AppTheme.colors.textSecondary
+                )
+                Text(driveBreadcrumbs.joinToString(" / ") { it.name }, color = AppTheme.colors.accentCyan)
+                if (driveBreadcrumbs.size > 1) {
+                    OutlinedButton(onClick = { requestDriveAuthorization(DriveOperation.UP_FOLDER) }, enabled = !driveBusy) {
+                        Text("UP ONE DRIVE FOLDER")
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { requestDriveAuthorization(DriveOperation.BROWSE) },
+                        enabled = !driveBusy,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("BROWSE DRIVE") }
+                    Button(
+                        onClick = { requestDriveAuthorization(DriveOperation.EXPORT) },
+                        enabled = !driveBusy,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("EXPORT WORKSPACE ZIP") }
+                }
+                Text(
+                    "Before use, the project owner must enable Drive API and register package com.usmanandumar.app with the correct signing-certificate SHA-1 in Google Cloud. No client secret or access token is stored by this app.",
+                    color = AppTheme.colors.textSecondary
+                )
+                driveMessage?.let { Text(it, color = AppTheme.colors.textSecondary) }
+                driveFiles.forEach { driveFile ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("${driveFile.name} · ${driveFile.mimeType}", Modifier.weight(1f), color = AppTheme.colors.textPrimary)
+                        if (driveFile.isFolder) {
+                            OutlinedButton(
+                                onClick = { requestDriveAuthorization(DriveOperation.OPEN_FOLDER, driveFile) },
+                                enabled = !driveBusy
+                            ) { Text("OPEN") }
+                        }
+                    }
+                }
             }
             item {
                 OutlinedTextField(newName, { newName = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("New file or folder name") })
@@ -392,3 +519,18 @@ private fun isPlainTextName(name: String): Boolean = name in setOf(".gitignore",
     name.substringAfterLast('.', "").lowercase() in setOf(
         "txt", "md", "kt", "kts", "java", "gradle", "xml", "yml", "yaml", "json", "py", "sh", "properties", "js", "ts", "html", "css", "toml", "ini", "csv"
     )
+
+private enum class DriveOperation { BROWSE, OPEN_FOLDER, UP_FOLDER, EXPORT }
+
+private const val GOOGLE_DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
+
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        val base = current.baseContext
+        if (base === current) break
+        current = base
+    }
+    return current as? Activity
+}

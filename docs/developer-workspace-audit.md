@@ -1,6 +1,6 @@
 # Developer workspace and agent ecosystem audit
 
-Audit date: 2026-10-22. Repository: [saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-). Work is on existing PR [#2](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/pull/2), branch `feature/developer-workspace-sandbox-search` to `main`. Before this revision, PR #2 was OPEN and UNMERGED; `main` was `2715e497ef372c91b31cf57170166820fce4bc42`. This change is being prepared only on the feature branch; no merge or change to `main` is authorized.
+Audit date: 2026-10-22. Repository: [saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-). Work is on existing PR [#2](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/pull/2), branch `feature/developer-workspace-sandbox-search` to `main`; the last previously verified source commit was `28bf0cd`. Before this follow-up, PR #2 was OPEN and UNMERGED; `main` was `2715e497ef372c91b31cf57170166820fce4bc42`. This change is being prepared only on the feature branch; no merge or change to `main` is authorized.
 
 Android identity remains `applicationId com.usmanandumar.app`, `minSdk 28`, and ARM32 `armeabi-v7a` default. No physical Samsung Galaxy M10 test is claimed.
 
@@ -27,11 +27,11 @@ No backend is labelled “securely isolated.” Command approval is authorizatio
 
 ## Agent-candidate research
 
-Official-source review is recorded for 11 candidates: OpenHands, OpenBuilder, OpenManus, OpenSwarm, OpenAI Codex CLI, Gemini CLI, Hermes Agent, Goose, Cline, Kilo Code and Aider. Details and official references are in [agent-compatibility-research.md](agent-compatibility-research.md). None is installed or smoke-tested by this revision. In particular, the required OpenHands/OpenBuilder/OpenManus/OpenSwarm identities are not substituted for each other; native API 28 ARM32 compatibility is not claimed. Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B research remains pending.
+Official-source review is complete for 14 agent products and two remote sandbox services. [agent-compatibility-research.md](agent-compatibility-research.md) contains the candidate profiles; the consolidated [ecosystem-research.md](ecosystem-research.md) provides the 16-record comparison, integration/security analysis and full references. None is installed or smoke-tested by this revision. The required OpenHands/OpenBuilder/OpenManus/OpenSwarm identities are kept distinct; native API 28 ARM32 compatibility is not claimed.
 
 ## Google Drive and credentials
 
-The Android repository has no Google Drive API integration, Drive scopes, Drive OAuth implementation or Google Android OAuth client ID/resource. No `google-services.json` or Drive API operation is configured in the inspected source. The configured `Google Workspace` Manus connector exists but is disabled; it does not configure Android APK OAuth. Therefore there is no Drive browse/search/import/export/upload/save operation to test, and no Drive-connected claim. Official setup/least-privilege scope/signing/upload evidence and the exact Cloud project, OAuth, consent and test-account prerequisites are recorded in [google-drive-evidence.md](google-drive-evidence.md). To proceed, the owner must configure a Google Cloud project, enable Drive API, register an Android OAuth client for this package and the relevant signing-certificate SHA-1, set consent/scopes and authorize a test account; do not embed a Web client secret in the APK.
+The feature branch now has a `play-services-auth` dependency and requests Google's Android `AuthorizationClient` only when the user selects a Drive action. The app asks for the narrow `drive.file` scope, browses accessible Drive folders/files, and exports the app workspace to ZIP using Drive v3 resumable 256 KiB chunks. Workspace export skips symlinks and is capped at 25,000 entries and 512 MiB uncompressed. Access tokens are passed only to the immediate request and not saved by the app. No Google Cloud project, Drive API enablement, Android signing fingerprints, actual consent, or real Drive operation has been configured or tested. `drive.file` does not permit unrestricted listing of all Drive content; full-drive access is not requested. Setup, scope and test prerequisites are in [google-drive-evidence.md](google-drive-evidence.md). The owner must enable Drive API, configure consent, register package `com.usmanandumar.app` with the relevant debug/release signing SHA-1, and authorize a test account before runtime verification. No Web client secret belongs in the APK.
 
 Existing GitHub OAuth and provider API-key stores use Android Keystore-backed AES-GCM storage in the inspected source. This is not evidence that OAuth clients/providers are configured or live. No credential values were added to this revision.
 
@@ -44,7 +44,7 @@ Existing GitHub OAuth and provider API-key stores use Android Keystore-backed AE
 - **E/T (execution, Termux):** Existing Termux RUN_COMMAND only, with explicit confirmation, bounded output and bounded wait; not isolated and not cancellable by this app.
 - **G/V (GitHub/version control):** Existing repository discovery and authorized GitHub browsing retained; existing clone remains public-only, shallow and in Termux home. No full-history clone into app workspace, Git status/diff/branch/commit/rollback workflow.
 - **H/N (HTTP/network diagnostics):** No general API client or network-diagnostic suite.
-- **K (credentials):** Provider and GitHub secrets use Keystore-backed encrypted storage; live provider/GitHub authentication was not exercised. Google Drive OAuth is absent.
+- **K (credentials):** Provider and GitHub secrets use Keystore-backed encrypted storage; live provider/GitHub authentication was not exercised. Google Drive uses action-scoped authorization; OAuth configuration and API access remain untested.
 - **L (logs/task state):** Existing app conversation/task logs remain; shell results are transient. No separate project task queue/history or artifact ledger.
 - **M (models):** Existing live model search/selection retained; no provider/network/inference test in this revision.
 - **O (open-source agents):** Candidate research only; none is installed or adapted for this Android app.
@@ -55,10 +55,10 @@ Existing GitHub OAuth and provider API-key stores use Android Keystore-backed AE
 ## Verification status
 
 - Static checks in the sandbox: passed for `git diff --check`, no conflict markers, app ID, `minSdk 28`, ARM32 ABI declaration and exactly one A–Z entry in order.
-- Local Gradle `testDebugUnitTest assembleDebug`: BLOCKED before compilation because no Android SDK is installed and `ANDROID_HOME`/`sdk.dir` is absent. This is an environment limitation; it is not a test pass or source failure.
-- GitHub Actions run `39815623547` on source commit `43ae245` failed compilation; the compiler identified `DeveloperWorkspaceFiles.kt` passing a second argument to the one-argument `relativePathOf`. The workspace rename operation has been changed locally to use a pure validated `WorkspacePathPolicy.renameTarget` helper with added root/nested/traversal tests. This fix is not yet pushed or validated; lint and API 36 failed at compile time, and final unit/build/API 28/API 36/release/APK results remain pending the next exact-commit CI run.
+- Local Gradle `:app:testDebugUnitTest`: BLOCKED before compilation because no Android SDK is installed and `ANDROID_HOME`/`sdk.dir` is absent. This is an environment limitation; it is not a test pass or source failure.
+- GitHub Actions run [39816746564](https://github.com/saedhawwa23-rgb/Usman-and-UMAR-automation-app-work-space-/actions/runs/39816746564) on exact PR commit `28bf0cd7188d1f265c31a07914c3ead5486b8179`: **PASS**. Unit tests and debug build, Android Lint, API 28 and API 36 instrumented tests, PRoot/Alpine provenance checks, ARM32 PRoot packaging, unsigned R8/ProGuard release build and APK uploads all completed successfully. The earlier run on `43ae245` exposed a `relativePathOf` compile error; the validated rename-target fix and regression tests are included in the passing commit.
 - Physical Galaxy M10 test: **NOT RUN**.
-- Drive OAuth/API test: **BLOCKED**; no Drive integration or OAuth setup exists.
+- Drive OAuth/API runtime test: **BLOCKED** pending owner-provided Google Cloud configuration, signing SHA-1 registration and account consent. The code is present on this branch but has not yet passed hosted CI or a device test.
 - External-agent installs/smoke tests: **NOT RUN**; official-source research only.
 
 ## Current changed and added files
@@ -71,6 +71,7 @@ Modified application files:
 - `app/src/main/java/com/opendroid/ai/ui/screens/DevelopersScreen.kt`
 - `app/src/main/java/com/opendroid/ai/ui/screens/DiscoveryScreen.kt`
 - `app/src/main/java/com/opendroid/ai/ui/screens/WorkspaceFilesScreen.kt`
+- `app/build.gradle`
 - `app/src/main/java/com/opendroid/ai/ui/viewmodel/DeveloperToolsViewModel.kt`
 
 Modified tests:
@@ -81,12 +82,18 @@ Added files:
 - `app/src/main/java/com/opendroid/ai/core/agent/DeveloperAgentRegistry.kt`
 - `app/src/main/java/com/opendroid/ai/core/backend/SandboxBackend.kt`
 - `app/src/main/java/com/opendroid/ai/core/storage/WorkspaceDiffPreview.kt`
+- `app/src/main/java/com/opendroid/ai/core/storage/WorkspaceArchive.kt`
+- `app/src/main/java/com/opendroid/ai/data/repository/GoogleDriveIntegration.kt`
+- `app/src/main/java/com/opendroid/ai/ui/viewmodel/GoogleDriveViewModel.kt`
 - `app/src/test/java/com/opendroid/ai/core/agent/DeveloperAgentRegistryTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/backend/BackendContractTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceAtomicWriterTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceDiffPreviewTest.kt`
 - `app/src/test/java/com/opendroid/ai/core/termux/TermuxOutputPolicyTest.kt`
+- `app/src/test/java/com/opendroid/ai/core/storage/WorkspaceArchiveTest.kt`
+- `app/src/test/java/com/opendroid/ai/data/repository/GoogleDriveIntegrationTest.kt`
 - `docs/agent-compatibility-research.md`
+- `docs/ecosystem-research.md`
 - `docs/google-drive-evidence.md`
 - `docs/developer-workspace-audit.md`
 

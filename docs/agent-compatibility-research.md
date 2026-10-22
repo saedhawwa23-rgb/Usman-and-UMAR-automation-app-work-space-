@@ -1,6 +1,6 @@
 # Agent and sandbox compatibility research
 
-Checked 2026-10-22 against each candidate's official repository, documentation and/or package feed. This report describes upstream capability, not installation in this Android project. None of the candidates below was installed or smoke-tested on the Samsung Galaxy M10 or in the sandbox. The target remains Android API 28, ARM32, package `com.usmanandumar.app`.
+Checked 2026-10-22 against each candidate's official repository, documentation and/or package feed. This report describes upstream capability, not installation in this Android project. None of the candidates below was installed or smoke-tested on the Samsung Galaxy M10 or in the sandbox. The target remains Android API 28, ARM32, package `com.usmanandumar.app`. The completed, consolidated 16-record comparison—including all 14 agent candidates, Daytona/E2B sandbox services, integration guidance, security boundaries and the full reference list—is in [ecosystem-research.md](ecosystem-research.md); that report is the source of truth for final cross-candidate comparisons.
 
 ## OpenHands
 
@@ -50,9 +50,9 @@ Checked 2026-10-22 against each candidate's official repository, documentation a
 
 **Capabilities and safety.** Official sources document plan mode, file and shell tools, testing, GitHub workflows, JSON headless mode, MCP/extensions, session restore/rewind and approval policies. Docker/Podman can isolate tools on a supported host, but command execution remains powerful and policy/confirmation is not itself isolation. No on-device installation, health or smoke test was performed. [tools](https://geminicli.com/docs/reference/tools/) · [commands](https://geminicli.com/docs/reference/commands/) · [sandbox](https://geminicli.com/docs/cli/sandbox/) · [policy engine](https://geminicli.com/docs/reference/policy-engine/).
 
-## Results pending
+## Consolidated report status
 
-The official-source workflow is still auditing the remaining user-listed candidates and remote sandbox providers. Their findings will be appended here before the report is finalized. All six reviewed candidates are research-only; none is installed, marked available, or connected to this Android app.
+The official-source workflow is complete for 14 agent products and two remote sandbox services. The additional candidate/service findings and final comparative recommendations are captured in [ecosystem-research.md](ecosystem-research.md). All records remain research-only; none is installed, marked available, or connected to this Android app.
 
 ## Hermes Agent
 
@@ -64,9 +64,9 @@ The official-source workflow is still auditing the remaining user-listed candida
 
 **Capabilities and safety.** Official docs describe planning/todos, file tools, terminal/background processes, GitHub via `gh` skill/MCP, tests, plugins/MCP, SQLite-backed sessions/memory, resume, stop/interrupt and optional checkpoints. The default local terminal is not a security sandbox; Docker backends can harden execution, but session environment variables are exposed to commands and plugins run in-process by default. Android background execution is not guaranteed. Do not catalog as ARM32-compatible or as installed/verified. [Security](https://hermes-agent.nousresearch.com/docs/user-guide/security) · [plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins) · [checkpoints](https://hermes-agent.nousresearch.com/docs/user-guide/checkpoints-and-rollback).
 
-## Remaining research
+## Additional completed candidate profiles
 
-Goose, Cline, Kilo Code, Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the active official-source research workflow and will be appended when verified.
+The profiles below add to the six initial candidates. Candidate-specific notes are complete; see the consolidated report for cross-candidate comparisons and the full Daytona/E2B adapter analysis.
 
 ## Goose
 
@@ -84,9 +84,9 @@ Goose, Cline, Kilo Code, Aider, Qwen Code, Open Interpreter, optional OpenCode, 
 
 **Capabilities and safety.** Plan/Act workflows, file edits, shell commands, tests, GitHub, providers, MCP/plugins/hooks, headless output, history and checkpoint restore are documented. Local approval/YOLO modes do not create isolation; shell access can modify files and run arbitrary commands, plugins run host code. Cloud Agents use a per-session sandbox with selected-repository access; remote SSH runs as the remote user. Provider usage requires Cline account/payment, a subscription, BYOK, or local model service. [Plan/Act](https://docs.cline.bot/core-workflows/plan-and-act) · [checkpoints](https://docs.cline.bot/core-workflows/checkpoints) · [plugins](https://docs.cline.bot/sdk/plugins) · [security/network docs](https://docs.cline.bot/usage/cli-overview).
 
-## Remaining research
+## Completed candidate profiles (continued)
 
-Kilo Code, Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the active official-source workflow.
+The following candidate and sandbox-service notes are completed; no installation or smoke test is claimed.
 
 ## Kilo Code
 
@@ -98,9 +98,9 @@ Kilo Code, Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2
 
 **Capabilities and safety.** Code/Ask/Plan/Debug and custom agents, tools for files, shell, web, MCP, GitHub, subagents/TODOs, checkpoints, sessions and CLI server/task APIs are documented. Local modes can access host files/commands; auto-approval and plugins are risky, plugins can access files/credentials/network. Cloud adds container isolation but retains injected secrets and repository/network trust boundaries. This remains an unverified remote option, not an installed local adapter. [agents](https://kilo.ai/docs/code-with-ai/agents/using-agents) · [tools](https://kilo.ai/docs/automate/tools) · [marketplace/security limits](https://kilo.ai/docs/customize/marketplace) · [testing API](https://github.com/Kilo-Org/kilocode/blob/main/TESTING.md).
 
-## Remaining research
+## Completed candidate profiles (continued)
 
-Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the official-source workflow.
+The following candidate and sandbox-service notes are completed; no installation or smoke test is claimed.
 
 ## Aider
 
@@ -110,6 +110,6 @@ Aider, Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in
 
 **Capabilities and boundaries.** Interactive file editing, repo map, Git, `/run`, user-specified tests/lint, chat history/restore, Ctrl-C, `/undo`, and cloud/local/OpenAI-compatible model providers are documented. No official plugin mechanism or broad autonomous GitHub management was verified. Aider operates with host filesystem/command privileges and sends repository map/context to the configured model; Git recovery is not isolation. Docker is a separate host-provided environment, not an Aider-managed Android backend. [commands](https://aider.chat/docs/usage/commands.html) · [tests](https://aider.chat/docs/usage/lint-test.html) · [providers](https://aider.chat/docs/llms.html) · [security boundary](https://aider.chat/docs/git.html).
 
-## Remaining research
+## Final candidate profiles
 
-Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B remain in the official-source workflow.
+Qwen Code, Open Interpreter, optional OpenCode, Daytona and E2B are now covered in this report and the consolidated [ecosystem research](ecosystem-research.md). No local installation or smoke test is claimed.
