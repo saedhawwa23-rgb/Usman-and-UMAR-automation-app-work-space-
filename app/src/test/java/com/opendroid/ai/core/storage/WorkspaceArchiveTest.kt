@@ -15,7 +15,7 @@ class WorkspaceArchiveTest {
         try {
             val root = File(base, "workspace").apply { mkdir() }
             File(root, "project/.git").mkdirs()
-            File(root, "project/src/Main.kt").apply { parentFile.mkdirs(); writeText("fun main() = Unit") }
+            File(root, "project/src/Main.kt").apply { requireNotNull(parentFile).mkdirs(); writeText("fun main() = Unit") }
             File(root, "project/.git/HEAD").writeText("ref: refs/heads/main")
             val archive = File(base, "workspace.zip")
 

@@ -77,10 +77,10 @@ class GoogleDriveIntegrationTest {
             val firstChunk = server.takeRequest()
             assertEquals("PUT", firstChunk.method)
             assertEquals("bytes 0-262143/$size", firstChunk.headers["Content-Range"])
-            assertEquals(256L * 1024, firstChunk.body?.size)
+            assertEquals(256 * 1024, firstChunk.body?.size ?: -1)
             val finalChunk = server.takeRequest()
             assertEquals("bytes 262144-${size - 1}/$size", finalChunk.headers["Content-Range"])
-            assertEquals(5L, finalChunk.body?.size)
+            assertEquals(5, finalChunk.body?.size ?: -1)
         } finally {
             archive.delete()
         }
