@@ -15,7 +15,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.Base64
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -121,6 +127,60 @@ class GitHubIntegration @Inject constructor(
         }
     }
 
+    /** Downloads a bounded GitHub source archive; ZIP archives do not contain Git history. */
+    suspend fun downloadRepositoryArchive(owner: String, repo: String, ref: String, destination: File): Long = withContext(Dispatchers.IO) {
+        require(OWNER_PATTERN.matches(owner)) { "The GitHub repository owner is invalid." }
+        require(REPOSITORY_PATTERN.matches(repo) && repo != "." && repo != "..") { "The GitHub repository name is invalid." }
+        require(ref.isNotBlank() && ref.length <= 255 && ref.split('/').all { segment ->
+            segment.isNotBlank() && segment != "." && segment != ".." && segment.none { it.isISOControl() || it == '\\' }
+        }) { "The repository branch or tag is invalid." }
+        require(!destination.exists()) { "The archive destination already exists." }
+        val parent = destination.absoluteFile.parentFile ?: error("The archive destination has no parent directory.")
+        require(parent.mkdirs() || parent.isDirectory) { "The archive download folder could not be created." }
+        val temporary = File(parent, ".${destination.name}.${UUID.randomUUID()}.tmp")
+        try {
+            val urlBuilder = api.newBuilder()
+                .addPathSegment("repos").addPathSegment(owner).addPathSegment(repo).addPathSegment("zipball")
+            ref.split('/').forEach(urlBuilder::addPathSegment)
+            val request = authenticatedRequest(urlBuilder.build()).get().build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw DiscoveryException("GitHub repository archive download failed (HTTP ${response.code}).")
+                }
+                val body = response.body
+                val declaredLength = body.contentLength()
+                require(declaredLength < 0L || declaredLength <= MAX_REPOSITORY_ARCHIVE_BYTES) {
+                    "The repository archive exceeds the ${MAX_REPOSITORY_ARCHIVE_BYTES / (1024 * 1024)} MB download limit."
+                }
+                var totalBytes = 0L
+                val buffer = ByteArray(32 * 1024)
+                FileOutputStream(temporary).use { output ->
+                    body.byteStream().use { input ->
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            totalBytes = Math.addExact(totalBytes, count.toLong())
+                            require(totalBytes <= MAX_REPOSITORY_ARCHIVE_BYTES) {
+                                "The repository archive exceeds the ${MAX_REPOSITORY_ARCHIVE_BYTES / (1024 * 1024)} MB download limit."
+                            }
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                    output.fd.sync()
+                }
+                try {
+                    Files.move(temporary.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE)
+                } catch (_: AtomicMoveNotSupportedException) {
+                    Files.move(temporary.toPath(), destination.toPath())
+                }
+                totalBytes
+            }
+        } catch (failure: Exception) {
+            temporary.delete()
+            throw failure
+        }
+    }
+
     suspend fun issues(owner: String, repo: String): List<GitHubIssue> = withContext(Dispatchers.IO) {
         val url = api.newBuilder().addPathSegment("repos").addPathSegment(owner).addPathSegment(repo).addPathSegment("issues")
             .addQueryParameter("state", "open").addQueryParameter("per_page", "50").build()
@@ -157,7 +217,13 @@ class GitHubIntegration @Inject constructor(
     private fun ensureSuccess(code: Int, action: String, json: Any) { if (code !in 200..299) throw failure(action, code, json) }
     private fun failure(action: String, code: Int, json: Any): DiscoveryException = DiscoveryException("GitHub $action failed (HTTP $code): ${json.errorMessage()}")
     private fun Any.errorMessage(): String = when (this) { is JsonObject -> stringOrNull("message") ?: "request rejected"; else -> "request rejected" }
-    private companion object { const val USER_AGENT = "USMAN-AND-UMAR-Android-App"; const val MAX_FILE_CHARS = 100_000 }
+    private companion object {
+        const val USER_AGENT = "USMAN-AND-UMAR-Android-App"
+        const val MAX_FILE_CHARS = 100_000
+        const val MAX_REPOSITORY_ARCHIVE_BYTES = 128L * 1024L * 1024L
+        val OWNER_PATTERN = Regex("[A-Za-z0-9-]{1,39}")
+        val REPOSITORY_PATTERN = Regex("[A-Za-z0-9_.-]{1,100}")
+    }
 }
 
 private fun String.asJson() = Gson().fromJson(this, com.google.gson.JsonElement::class.java)

@@ -187,6 +187,7 @@ android {
         checkReleaseBuilds = true
         warningsAsErrors = true
         baseline = file("lint-baseline.xml")
+        lintConfig = file("lint.xml")
         error 'Recycle', 'UnusedResources', 'IconDuplicates', 'UseKtx', 'DefaultLocale',
                 'DuplicateUsesFeature', 'InlinedApi', 'AutoboxingStateCreation'
         // Fires whenever a newer Gradle/AGP is published, so under
@@ -257,6 +258,13 @@ dependencies {
     implementation 'com.google.dagger:hilt-android:2.60.1'
     ksp 'com.google.dagger:hilt-compiler:2.60.1'
     implementation 'androidx.hilt:hilt-navigation-compose:1.1.0'
+    // Request Google Drive authorization only when the user chooses a Drive action.
+    implementation 'com.google.android.gms:play-services-auth:22.0.0'
+
+    // Pure-Java Git implementation for real app-workspace repositories (no native ABI).
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:5.13.3.202401111512-r'
+    // JGit's SLF4J API requires a runtime binding; use the Android-specific backend.
+    implementation 'org.slf4j:slf4j-android:1.7.36'
 
     // Networking
     // The OkHttp BOM is the single source of truth for every com.squareup.okhttp3

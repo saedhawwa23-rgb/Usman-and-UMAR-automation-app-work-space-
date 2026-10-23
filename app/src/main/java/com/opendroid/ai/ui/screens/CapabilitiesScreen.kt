@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Extension
@@ -33,14 +35,14 @@ import com.opendroid.ai.ui.theme.AppTheme
  */
 @Composable
 fun CapabilitiesScreen(
-    onSearchAI: () -> Unit,
-    onSearchGitHub: () -> Unit,
+    onUnifiedSearch: () -> Unit,
     onGitHubWorkspace: () -> Unit,
     onTermux: () -> Unit,
-    onUniversalAgent: () -> Unit
+    onUniversalAgent: () -> Unit,
+    onDevelopers: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
@@ -56,16 +58,16 @@ fun CapabilitiesScreen(
         )
         Spacer(Modifier.height(4.dp))
         CapabilityCard(
-            title = "SEARCH AI PROVIDERS",
-            description = "Query configured AI provider model-list endpoints; results are not misrepresented as verified chat/tool capability.",
-            icon = Icons.Default.Search,
-            onClick = onSearchAI
+            title = "DEVELOPERS A–Z",
+            description = "Search the developer workspace catalog and open supported AI, GitHub, Termux, permissions, and logs integrations. Unavailable tools are labeled honestly.",
+            icon = Icons.Default.Extension,
+            onClick = onDevelopers
         )
         CapabilityCard(
-            title = "SEARCH GITHUB PROJECTS",
-            description = "Search public GitHub repositories, preview README/files, then explicitly ADD, USE, or CLONE.",
-            icon = Icons.Default.Code,
-            onClick = onSearchGitHub
+            title = "UNIFIED SEARCH · AI, GITHUB & DEVELOPER TOOLS",
+            description = "Use one search interface with AI & Models, GitHub Projects, and Developer Tools modes.",
+            icon = Icons.Default.Search,
+            onClick = onUnifiedSearch
         )
         CapabilityCard(
             title = "GITHUB WORKSPACE",

@@ -60,6 +60,10 @@ class CloudToolAgent @Inject constructor(
         registry.register(LocalRegistryConnector(registry))
     }
 
+    /** Live snapshot of integrations currently registered in this app process. */
+    fun registeredTools(): List<ConnectorTool> = registry.allTools()
+    fun registeredConnectors(): List<UniversalConnector> = registry.all()
+
     suspend fun run(goal: String, maxSteps: Int = 12): UniversalAgentResult {
         require(goal.isNotBlank()) { "Goal must not be blank" }
         val events = mutableListOf<UniversalAgentEvent>()

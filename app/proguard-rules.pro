@@ -85,6 +85,13 @@
 -dontwarn com.google.errorprone.annotations.Immutable
 -dontwarn com.google.errorprone.annotations.RestrictedApi
 
+# JGit references these optional desktop JVM facilities for process monitoring,
+# JMX, and HTTP Negotiate authentication. Android does not provide them; this app
+# uses neither feature, and GitHub HTTPS uses the supported username/token flow.
+-dontwarn java.lang.management.**
+-dontwarn javax.management.**
+-dontwarn org.ietf.jgss.**
+
 # ── Accompanist ──
 -dontwarn com.google.accompanist.**
 -keep class com.google.accompanist.** { *; }

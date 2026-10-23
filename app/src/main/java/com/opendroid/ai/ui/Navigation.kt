@@ -61,6 +61,10 @@ object OpenDroidRoutes {
     const val GITHUB_WORKSPACE = "github_workspace"
     const val TERMUX = "termux"
     const val UNIVERSAL_AGENT = "universal_agent"
+    const val DEVELOPERS = "developers"
+    const val LOGS = "developer_logs"
+    const val INTEGRATED_TERMINAL = "integrated_terminal"
+    const val WORKSPACE_FILES = "workspace_files"
 }
 
 /**
@@ -190,6 +194,9 @@ fun OpenDroidNavigation(
                 },
                 onNavigateToUniversalAgent = {
                     navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT)
+                },
+                onNavigateToDevelopers = {
+                    navController.navigate(OpenDroidRoutes.DEVELOPERS)
                 }
             )
         }
@@ -300,15 +307,23 @@ fun OpenDroidNavigation(
             DiscoveryScreen(
                 viewModel = hiltViewModel(),
                 initialTab = 0,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenToolAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) },
+                onOpenWorkspaceFiles = { navController.navigate(OpenDroidRoutes.WORKSPACE_FILES) },
+                onOpenTermuxControls = { navController.navigate(OpenDroidRoutes.TERMUX) },
+                onOpenTerminal = { navController.navigate(OpenDroidRoutes.INTEGRATED_TERMINAL) }
             )
         }
 
         composable(OpenDroidRoutes.GITHUB_DISCOVERY) {
             DiscoveryScreen(
                 viewModel = hiltViewModel(),
-                initialTab = 1,
-                onBack = { navController.popBackStack() }
+                initialTab = 3,
+                onBack = { navController.popBackStack() },
+                onOpenToolAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) },
+                onOpenWorkspaceFiles = { navController.navigate(OpenDroidRoutes.WORKSPACE_FILES) },
+                onOpenTermuxControls = { navController.navigate(OpenDroidRoutes.TERMUX) },
+                onOpenTerminal = { navController.navigate(OpenDroidRoutes.INTEGRATED_TERMINAL) }
             )
         }
 
@@ -320,6 +335,12 @@ fun OpenDroidNavigation(
         }
 
         composable(OpenDroidRoutes.TERMUX) {
+            TermuxScreen(
+                viewModel = hiltViewModel(),
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(OpenDroidRoutes.INTEGRATED_TERMINAL) {
             IntegratedTerminalScreen(
                 viewModel = hiltViewModel(),
                 onBack = { navController.popBackStack() }
@@ -328,6 +349,25 @@ fun OpenDroidNavigation(
 
         composable(OpenDroidRoutes.UNIVERSAL_AGENT) {
             UniversalAgentScreen()
+        }
+        composable(OpenDroidRoutes.DEVELOPERS) {
+            DevelopersScreen(
+                onOpenAI = { navController.navigate(OpenDroidRoutes.DISCOVERY) },
+                onOpenGitHubSearch = { navController.navigate(OpenDroidRoutes.GITHUB_DISCOVERY) },
+                onOpenGitHubWorkspace = { navController.navigate(OpenDroidRoutes.GITHUB_WORKSPACE) },
+                onOpenTermux = { navController.navigate(OpenDroidRoutes.TERMUX) },
+                onOpenTerminal = { navController.navigate(OpenDroidRoutes.INTEGRATED_TERMINAL) },
+                onOpenWorkspaceFiles = { navController.navigate(OpenDroidRoutes.WORKSPACE_FILES) },
+                onOpenAgent = { navController.navigate(OpenDroidRoutes.UNIVERSAL_AGENT) },
+                onOpenPermissions = { navController.navigate(OpenDroidRoutes.PERMISSIONS) },
+                onOpenLogs = { navController.navigate(OpenDroidRoutes.LOGS) }
+            )
+        }
+        composable(OpenDroidRoutes.LOGS) {
+            LogsScreen(viewModel = hiltViewModel())
+        }
+        composable(OpenDroidRoutes.WORKSPACE_FILES) {
+            WorkspaceFilesScreen(onBack = { navController.popBackStack() })
         }
     }
 }
@@ -361,6 +401,7 @@ fun MainDashboard(
     onNavigateToGitHubWorkspace: () -> Unit = {},
     onNavigateToTermux: () -> Unit = {},
     onNavigateToUniversalAgent: () -> Unit = {},
+    onNavigateToDevelopers: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -479,11 +520,11 @@ fun MainDashboard(
                     Screen.Memory -> MemoryScreen(viewModel = memoryViewModel)
                     Screen.Social -> SocialScreen(viewModel = socialViewModel)
                     Screen.Tools -> CapabilitiesScreen(
-                        onSearchAI = onNavigateToDiscovery,
-                        onSearchGitHub = onNavigateToGitHubDiscovery,
+                        onUnifiedSearch = onNavigateToDiscovery,
                         onGitHubWorkspace = onNavigateToGitHubWorkspace,
                         onTermux = onNavigateToTermux,
-                        onUniversalAgent = onNavigateToUniversalAgent
+                        onUniversalAgent = onNavigateToUniversalAgent,
+                        onDevelopers = onNavigateToDevelopers
                     )
                     Screen.Macros -> MacrosScreen(
                         viewModel = macroViewModel,

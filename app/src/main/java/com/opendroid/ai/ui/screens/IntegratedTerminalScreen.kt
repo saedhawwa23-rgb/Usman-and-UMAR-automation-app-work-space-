@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,6 +19,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +44,7 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
     val termuxStatus by viewModel.termuxStatus.collectAsState()
     val context = LocalContext.current
     var command by remember { mutableStateOf("echo USMAN_AND_UMAR_TERMINAL_OK") }
+    var pendingCommand by remember { mutableStateOf<String?>(null) }
     var showDiagnostics by remember { mutableStateOf(false) }
     var copyAfterRefresh by remember { mutableStateOf(false) }
 
@@ -60,7 +63,7 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("TERMUX LINUX TERMINAL", fontWeight = FontWeight.Bold) },
+                title = { Text("TERMUX SHELL COMMANDS", fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
             )
         },
@@ -73,8 +76,15 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
             item {
                 Text("TERMUX COMMAND MODE", fontWeight = FontWeight.Bold, color = AppTheme.colors.textPrimary)
                 Text(
-                    "Terminal backend: Alpine Linux running through Termux. Command execution is working on this Android 9 device and returns stdout, stderr, and the exit code.",
+                    "Commands run through Termux's background RUN_COMMAND API using Termux's shell/environment. The app-owned Alpine/PRoot path is disabled on Android 9+. Termux output includes stdout, stderr, and an exit code when returned.",
                     color = AppTheme.colors.textSecondary
+                )
+            }
+            item {
+                Text(
+                    "NOT A SECURITY SANDBOX: commands are not isolated from the Termux app environment, workspace/resource limits are not enforced here, and a timeout can stop waiting without proving that a child process stopped. Do not paste secrets. Review every command before confirming.",
+                    color = AppTheme.colors.accentRed,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
             item {
@@ -82,19 +92,19 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
                     value = command,
                     onValueChange = { command = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Alpine command") },
+                    label = { Text("Termux shell command") },
                     singleLine = true
                 )
                 Button(
-                    onClick = { viewModel.runViaTermux(command) },
+                    onClick = { pendingCommand = command },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    enabled = termuxAvailable
-                ) { Text("RUN COMMAND VIA TERMUX") }
+                    enabled = termuxAvailable && command.isNotBlank()
+                ) { Text("REVIEW & RUN IN TERMUX") }
                 Text(termuxStatus, color = AppTheme.colors.textSecondary)
             }
             item {
                 Text(
-                    "Native app-private PRoot is disabled on Android 9+ because the OS seccomp policy terminates it with SIGSYS (exit 159). Use Termux Command Mode for this device.",
+                    "Native app-private PRoot is disabled on Android 9+ because the OS seccomp policy terminates it with SIGSYS (exit 159). This screen does not run commands inside the app-owned Alpine root filesystem.",
                     color = AppTheme.colors.textSecondary
                 )
                 OutlinedButton(onClick = viewModel::clearOutput, modifier = Modifier.fillMaxWidth()) { Text("CLEAR OUTPUT") }
@@ -118,5 +128,25 @@ fun IntegratedTerminalScreen(viewModel: LinuxTerminalViewModel, onBack: () -> Un
             }
             item { Text(output.ifBlank { "No command output yet." }, color = AppTheme.colors.textPrimary) }
         }
+    }
+
+    pendingCommand?.let { candidate ->
+        AlertDialog(
+            onDismissRequest = { pendingCommand = null },
+            title = { Text("Run command in Termux?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("This is user confirmation, not sandbox isolation. The command will run in Termux's environment and may change files, use the network, or continue after a timeout.")
+                    Text(candidate, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingCommand = null
+                    viewModel.runViaTermux(candidate)
+                }) { Text("RUN COMMAND") }
+            },
+            dismissButton = { TextButton(onClick = { pendingCommand = null }) { Text("CANCEL") } }
+        )
     }
 }
