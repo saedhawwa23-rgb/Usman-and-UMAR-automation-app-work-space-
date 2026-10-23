@@ -131,7 +131,7 @@ object WorkspaceProjectSnapshotExtractor {
             importInfo.writeText(
                 "USMAN AND UMAR repository source snapshot\n" +
                     "Source: $sourceUrl\n" +
-                    "Ref: ${ref.replace('\\n', ' ').replace('\\r', ' ')}\n" +
+                    "Ref: ${ref.replace('\n', ' ').replace('\r', ' ')}\n" +
                     "Git object history, branches, tags, remotes and uncommitted changes are not included.\n" +
                     "Project code was not executed and dependencies were not installed.\n",
                 Charsets.UTF_8
