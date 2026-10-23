@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!--
+      JGit includes an opt-in NoCheckX509TrustManager used only when its
+      http.sslVerify configuration is false. GitWorkspaceManager installs
+      StrictTlsHttpConnectionFactory, which forces sslVerify=true at every
+      HTTPS session, and StrictTlsHttpConnectionFactoryTest covers that rule.
+      Keep this exception path-scoped to the exact JGit artifact; do not disable
+      the security check for app source or other dependencies.
+    -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore path="**/org.eclipse.jgit-5.13.3.202401111512-r.jar" />
+    </issue>
+</lint>

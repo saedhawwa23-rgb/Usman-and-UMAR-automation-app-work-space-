@@ -8,10 +8,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.TransportConfigCallback
 import org.eclipse.jgit.api.errors.CanceledException
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.revwalk.RevWalk
+import org.eclipse.jgit.transport.TransportHttp
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.File
 import java.io.IOException
@@ -194,6 +196,11 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
                 .setCloneAllBranches(true)
                 .setTimeout(60)
                 .setProgressMonitor(progressMonitor)
+                .setTransportConfigCallback(TransportConfigCallback { transport ->
+                    if (transport is TransportHttp) {
+                        transport.setHttpConnectionFactory(StrictTlsHttpConnectionFactory())
+                    }
+                })
             if (credentials != null) clone = clone.setCredentialsProvider(credentials)
 
             val downloaded = try {
