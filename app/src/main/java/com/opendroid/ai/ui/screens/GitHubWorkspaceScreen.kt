@@ -73,7 +73,13 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                 message?.let { Text(it, color = AppTheme.colors.textSecondary) }
             }
             if (authenticated) {
-                item { Text("YOUR REPOSITORIES", fontWeight = FontWeight.Bold) }
+                item {
+                    Text("YOUR REPOSITORIES", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Import downloads a bounded source snapshot into the shared app workspace. Git history and branches are not included; project code is not run and dependencies are not installed.",
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
                 items(repos, key = { it.id }) { repo ->
                     Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -82,6 +88,9 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { selectedRepo = repo; path = ""; viewModel.openRepository(repo) }) { Text("FILES") }
                                 OutlinedButton(onClick = { selectedRepo = repo; viewModel.loadIssues(repo) }) { Text("ISSUES") }
+                            }
+                            OutlinedButton(onClick = { viewModel.importSourceSnapshot(repo) }, enabled = !busy) {
+                                Text("IMPORT SOURCE SNAPSHOT")
                             }
                         }
                     }

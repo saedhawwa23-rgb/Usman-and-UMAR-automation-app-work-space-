@@ -7,9 +7,11 @@ import com.opendroid.ai.data.repository.GitHubDevicePoll
 import com.opendroid.ai.data.repository.GitHubFile
 import com.opendroid.ai.data.repository.GitHubIntegration
 import com.opendroid.ai.data.repository.GitHubIssue
+import com.opendroid.ai.data.repository.GitHubProjectSnapshotImporter
 import com.opendroid.ai.data.repository.GitHubRepoSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +19,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class GitHubWorkspaceViewModel @Inject constructor(
-    private val github: GitHubIntegration
+    private val github: GitHubIntegration,
+    private val projectImporter: GitHubProjectSnapshotImporter
 ) : ViewModel() {
     val authenticated = MutableStateFlow(github.isAuthenticated())
     val account = MutableStateFlow<com.opendroid.ai.data.repository.GitHubAccount?>(null)
@@ -78,6 +81,22 @@ class GitHubWorkspaceViewModel @Inject constructor(
         runCatching { github.readFile(repo.fullName.substringBefore('/'), repo.fullName.substringAfter('/'), file.path, repo.defaultBranch) }
             .onSuccess { selectedFile.value = it }.onFailure { message.value = it.message }
         busy.value = false
+    }
+
+    fun importSourceSnapshot(repo: GitHubRepoSummary) = viewModelScope.launch {
+        if (busy.value) return@launch
+        busy.value = true
+        message.value = "Downloading ${repo.fullName} source snapshot…"
+        try {
+            val imported = projectImporter.importDefaultBranch(repo)
+            message.value = "Imported ${imported.fileCount} files to ${imported.relativePath}. Git history, branches and tags are not included."
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            message.value = failure.message ?: "Could not import the repository source snapshot."
+        } finally {
+            busy.value = false
+        }
     }
 
     fun loadIssues(repo: GitHubRepoSummary) = viewModelScope.launch {
