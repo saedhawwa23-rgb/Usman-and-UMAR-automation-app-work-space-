@@ -151,8 +151,14 @@ class GitHubWorkspaceViewModel @Inject constructor(
     }
 
     fun cancelClone() {
-        activeCloneCancellation?.cancel()
-        if (cloning.value) message.value = "Cancellation requested; waiting for the current Git transfer to stop…"
+        val accepted = activeCloneCancellation?.cancel() == true
+        if (cloning.value) {
+            message.value = if (accepted) {
+                "Cancellation requested; waiting for the current Git transfer to stop…"
+            } else {
+                "Clone is finishing or cancellation was already requested."
+            }
+        }
     }
 
     override fun onCleared() {

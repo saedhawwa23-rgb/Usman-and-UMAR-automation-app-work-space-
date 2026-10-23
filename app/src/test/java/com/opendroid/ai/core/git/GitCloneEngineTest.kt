@@ -20,12 +20,14 @@ class GitCloneEngineTest {
             source = createRepository(sourceDir, commitCount = 3)
             val workspace = File(base, "workspace")
             val remote = sourceDir.toURI().toString()
+            val cancellation = GitCloneCancellation()
 
             val result = GitCloneEngine(workspace).clone(
                 remoteUrl = remote,
                 destinationRelativePath = "projects/demo/sample",
                 expectedBranch = "main",
-                mode = GitCloneMode.FULL_HISTORY
+                mode = GitCloneMode.FULL_HISTORY,
+                cancellation = cancellation
             )
 
             val clonedDir = File(workspace, "projects/demo/sample")
@@ -44,6 +46,7 @@ class GitCloneEngineTest {
             assertEquals(GitCloneMode.FULL_HISTORY, result.mode)
             assertEquals(40, result.commit.length)
             assertFalse(result.shallowMetadataPresent)
+            assertFalse("Cancellation after successful publication must be rejected", cancellation.cancel())
         } finally {
             source?.close()
             base.deleteRecursively()
@@ -110,6 +113,34 @@ class GitCloneEngineTest {
                     mode = GitCloneMode.FULL_HISTORY
                 )
             }
+        } finally {
+            source?.close()
+            base.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun symbolicLinkDestinationParentIsRejectedWithoutTouchingOutsideFiles() {
+        val base = Files.createTempDirectory("git-clone-symlink-test").toFile()
+        var source: Git? = null
+        try {
+            val sourceDir = File(base, "source")
+            source = createRepository(sourceDir, commitCount = 1)
+            val workspace = File(base, "workspace").apply { mkdirs() }
+            val outside = File(base, "outside").apply { mkdirs() }
+            val marker = File(outside, "preserve.txt").apply { writeText("outside workspace") }
+            Files.createSymbolicLink(File(workspace, "projects").toPath(), outside.toPath())
+
+            assertThrows(IllegalArgumentException::class.java) {
+                GitCloneEngine(workspace).clone(
+                    remoteUrl = sourceDir.toURI().toString(),
+                    destinationRelativePath = "projects/demo/sample",
+                    expectedBranch = "main",
+                    mode = GitCloneMode.FULL_HISTORY
+                )
+            }
+            assertEquals("outside workspace", marker.readText())
+            assertFalse(File(outside, "demo").exists())
         } finally {
             source?.close()
             base.deleteRecursively()

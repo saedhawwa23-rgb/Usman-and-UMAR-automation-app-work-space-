@@ -11,15 +11,15 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.errors.CanceledException
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.revwalk.RevWalk
-import org.eclipse.jgit.transport.ProgressMonitor
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,9 +42,29 @@ data class GitWorkspaceCloneResult(
 )
 
 class GitCloneCancellation internal constructor() {
-    private val requested = AtomicBoolean(false)
-    fun cancel() { requested.set(true) }
-    internal fun isRequested(): Boolean = requested.get()
+    private enum class State { ACTIVE, CANCELLED, FINISHED }
+    private var state = State.ACTIVE
+
+    @Synchronized
+    fun cancel(): Boolean {
+        if (state != State.ACTIVE) return false
+        state = State.CANCELLED
+        return true
+    }
+
+    @Synchronized
+    internal fun isRequested(): Boolean = state == State.CANCELLED
+
+    @Synchronized
+    internal fun <T> finishIfActive(action: () -> T): T {
+        if (state == State.CANCELLED) {
+            throw GitCloneCancelledException("Git clone was cancelled; temporary clone data was removed.")
+        }
+        check(state == State.ACTIVE) { "The clone operation has already finished." }
+        val value = action()
+        state = State.FINISHED
+        return value
+    }
 }
 
 @Singleton
@@ -125,34 +145,29 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         val root = workspaceRoot.canonicalFile
         require(root.exists() || root.mkdirs()) { "The app workspace could not be created." }
         require(root.isDirectory && root.canRead() && root.canWrite()) { "The app workspace is not readable and writable." }
-        val rootPath = root.toPath()
-        val target = File(root, relativePath)
-        require(target.toPath().normalize().startsWith(rootPath)) { "The Git repository path escaped the app workspace." }
-        require(!target.exists() && !Files.isSymbolicLink(target.toPath())) {
+        val rootPath = root.toPath().toAbsolutePath().normalize()
+        require(!Files.isSymbolicLink(rootPath) && Files.isDirectory(rootPath, LinkOption.NOFOLLOW_LINKS)) {
+            "The app workspace root is not a stable directory."
+        }
+        val initialTarget = resolveSafeTarget(root, rootPath, relativePath, createParents = true)
+        require(!Files.exists(initialTarget.toPath(), LinkOption.NOFOLLOW_LINKS)) {
             "The workspace path already exists. Existing snapshots and repositories are preserved; rename or move it before cloning."
         }
 
-        val parentRelative = relativePath.substringBeforeLast('/', missingDelimiterValue = "")
-        var parent = root
-        if (parentRelative.isNotEmpty()) {
-            for (segment in parentRelative.split('/')) {
-                parent = File(parent, segment)
-                require(!Files.isSymbolicLink(parent.toPath())) { "The Git destination contains a symbolic-link directory." }
-                if (!parent.exists()) require(parent.mkdir()) { "Could not create the Git destination folder." }
-                require(parent.isDirectory && parent.canonicalFile.toPath().startsWith(rootPath)) {
-                    "The Git destination is outside the app workspace."
-                }
-            }
-        }
-
-        val staging = File(parent, ".${target.name}.clone-${UUID.randomUUID()}")
-        val lock = CLONE_LOCKS.computeIfAbsent(target.absolutePath) { ReentrantLock() }
+        // Keep network writes in a direct child of the canonical workspace root; destination
+        // parents are checked again immediately before and after the final move.
+        val staging = File(root, ".usman-git-clone-${UUID.randomUUID()}")
+        require(!Files.exists(staging.toPath(), LinkOption.NOFOLLOW_LINKS)) { "Could not reserve a unique clone staging path." }
+        val lock = CLONE_LOCKS.computeIfAbsent(initialTarget.absolutePath) { ReentrantLock() }
         require(lock.tryLock()) { "A clone of this repository is already in progress." }
         var movedToTarget = false
         var cloneVerified = false
         try {
-            require(!target.exists()) {
-                "The workspace path already exists. Existing snapshots and repositories are preserved; rename or move it before cloning."
+            ensureNotCancelled(cancellation)
+            resolveSafeTarget(root, rootPath, relativePath, createParents = false).also {
+                require(!Files.exists(it.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                    "The workspace path was created while cloning; it was not overwritten."
+                }
             }
 
             val progressMonitor = object : ProgressMonitor {
@@ -196,28 +211,38 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
             val downloaded = try {
                 clone.call()
             } catch (cancelled: CanceledException) {
-                throw GitCloneCancelledException("Git clone was cancelled; temporary data was removed.", cancelled)
+                throw GitCloneCancelledException("Git clone was cancelled; temporary clone data was removed.", cancelled)
             } catch (failure: Exception) {
                 if (cancellation.isRequested()) {
-                    throw GitCloneCancelledException("Git clone was cancelled; temporary data was removed.", failure)
+                    throw GitCloneCancelledException("Git clone was cancelled; temporary clone data was removed.", failure)
                 }
                 throw GitCloneException(classifyCloneFailure(failure), failure)
             }
             try {
-                verify(downloaded.repository, remoteUrl, expectedBranch, mode)
+                ensureNotCancelled(cancellation)
+                verify(downloaded.repository, root, remoteUrl, expectedBranch, mode)
             } finally {
                 downloaded.close()
             }
+            ensureNotCancelled(cancellation)
 
-            require(!target.exists()) { "The workspace path was created while cloning; it was not overwritten." }
-            Files.move(staging.toPath(), target.toPath())
-            movedToTarget = true
+            return cancellation.finishIfActive {
+                val target = resolveSafeTarget(root, rootPath, relativePath, createParents = false)
+                require(!Files.exists(target.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                    "The workspace path was created while cloning; it was not overwritten."
+                }
+                Files.move(staging.toPath(), target.toPath())
+                movedToTarget = true
+                requireSafeExistingTarget(root, rootPath, relativePath)
 
-            val verified = Git.open(target)
-            return try {
-                verify(verified.repository, remoteUrl, expectedBranch, mode).also { cloneVerified = true }
-            } finally {
-                verified.close()
+                val published = Git.open(target)
+                try {
+                    verify(published.repository, root, remoteUrl, expectedBranch, mode).also {
+                        cloneVerified = true
+                    }
+                } finally {
+                    published.close()
+                }
             }
         } catch (failure: GitCloneCancelledException) {
             throw failure
@@ -225,27 +250,71 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
             throw failure
         } catch (failure: Exception) {
             if (cancellation.isRequested()) {
-                throw GitCloneCancelledException("Git clone was cancelled; temporary data was removed.", failure)
+                throw GitCloneCancelledException("Git clone was cancelled; temporary clone data was removed.", failure)
             }
             throw GitCloneException(classifyCloneFailure(failure), failure)
         } finally {
-            safeDeleteTree(staging)
-            if (movedToTarget && !cloneVerified) safeDeleteTree(target)
+            safeDeleteTree(staging, rootPath)
+            if (movedToTarget && !cloneVerified) safeDeleteTree(initialTarget, rootPath)
             lock.unlock()
+        }
+    }
+
+    private fun resolveSafeTarget(root: File, rootPath: java.nio.file.Path, relativePath: String, createParents: Boolean): File {
+        require(!Files.isSymbolicLink(rootPath) && Files.isDirectory(rootPath, LinkOption.NOFOLLOW_LINKS)) {
+            "The app workspace root changed during the Git clone."
+        }
+        val segments = relativePath.split('/')
+        require(segments.isNotEmpty() && segments.none { it.isBlank() || it == "." || it == ".." }) {
+            "The Git destination path is invalid."
+        }
+        var parent = root
+        for (segment in segments.dropLast(1)) {
+            val next = File(parent, segment)
+            require(!Files.isSymbolicLink(next.toPath())) { "The Git destination contains a symbolic-link directory." }
+            if (!Files.exists(next.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                require(createParents && next.mkdir()) { "The Git destination folder is missing or could not be created." }
+            }
+            require(Files.isDirectory(next.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                "The Git destination parent is not a real directory."
+            }
+            require(next.canonicalFile.toPath().startsWith(rootPath)) { "The Git destination is outside the app workspace." }
+            parent = next
+        }
+        val target = File(parent, segments.last())
+        require(target.toPath().toAbsolutePath().normalize().startsWith(rootPath)) {
+            "The Git repository path escaped the app workspace."
+        }
+        require(!Files.isSymbolicLink(target.toPath())) { "The Git destination is a symbolic link." }
+        return target
+    }
+
+    private fun requireSafeExistingTarget(root: File, rootPath: java.nio.file.Path, relativePath: String): File {
+        val target = resolveSafeTarget(root, rootPath, relativePath, createParents = false)
+        require(Files.isDirectory(target.toPath(), LinkOption.NOFOLLOW_LINKS) &&
+            target.canonicalFile.toPath().startsWith(rootPath)) {
+            "The published Git repository is outside the app workspace or is not a real directory."
+        }
+        return target
+    }
+
+    private fun ensureNotCancelled(cancellation: GitCloneCancellation) {
+        if (cancellation.isRequested()) {
+            throw GitCloneCancelledException("Git clone was cancelled; temporary clone data was removed.")
         }
     }
 
     private fun verify(
         repository: org.eclipse.jgit.lib.Repository,
+        root: File,
         expectedRemote: String,
         expectedBranch: String,
         mode: GitCloneMode
     ): GitWorkspaceCloneResult {
         require(!repository.isBare) { "The clone did not create a working tree." }
         val workTree = repository.workTree.canonicalFile
-        require(workTree.toPath().startsWith(workspaceRoot.canonicalFile.toPath())) {
-            "The cloned working tree is outside the app workspace."
-        }
+        val rootPath = root.toPath().toAbsolutePath().normalize()
+        require(workTree.toPath().startsWith(rootPath)) { "The cloned working tree is outside the app workspace." }
         require(repository.config.getString("remote", "origin", "url") == expectedRemote) {
             "The clone's origin remote does not match the selected GitHub repository."
         }
@@ -275,7 +344,7 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         }
 
         return GitWorkspaceCloneResult(
-            relativePath = relativePathFor(workTree),
+            relativePath = rootPath.relativize(workTree.toPath()).joinToString("/"),
             remoteUrl = expectedRemote,
             branch = branch,
             commit = head.name,
@@ -292,9 +361,6 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
             count
         }
 
-    private fun relativePathFor(workTree: File): String = workspaceRoot.canonicalFile.toPath()
-        .relativize(workTree.canonicalFile.toPath()).joinToString("/")
-
     private fun classifyCloneFailure(failure: Exception): String = when {
         failure.message?.contains("authentication", ignoreCase = true) == true ||
             failure.message?.contains("not authorized", ignoreCase = true) == true ->
@@ -308,15 +374,28 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         else -> "Git clone failed. Check the repository, network, available storage, and GitHub authorization."
     }
 
-    private fun safeDeleteTree(file: File) {
-        val path = file.toPath()
-        if (!Files.exists(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return
-        if (Files.isSymbolicLink(path) || !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-            Files.deleteIfExists(path)
-            return
+    private fun safeDeleteTree(entry: File, rootPath: java.nio.file.Path) {
+        if (Files.isSymbolicLink(rootPath) || !Files.isDirectory(rootPath, LinkOption.NOFOLLOW_LINKS)) return
+        val path = entry.toPath().toAbsolutePath().normalize()
+        if (!path.startsWith(rootPath) || path == rootPath) return
+        val relative = rootPath.relativize(path)
+        var parent = rootPath
+        for (segment in relative.dropLast(1)) {
+            parent = parent.resolve(segment)
+            if (Files.isSymbolicLink(parent) || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) return
         }
-        (file.listFiles() ?: emptyArray()).forEach(::safeDeleteTree)
-        Files.deleteIfExists(path)
+        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return
+        runCatching {
+            if (Files.isSymbolicLink(path) || !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                Files.deleteIfExists(path)
+            } else {
+                val children = Files.newDirectoryStream(path).use { it.toList() }
+                children.forEach { safeDeleteTree(it.toFile(), rootPath) }
+                if (!Files.isSymbolicLink(path) && Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                    Files.deleteIfExists(path)
+                }
+            }
+        }
     }
 
     private companion object {
