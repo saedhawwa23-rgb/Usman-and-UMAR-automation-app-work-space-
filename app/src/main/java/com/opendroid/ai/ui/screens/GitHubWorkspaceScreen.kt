@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import com.opendroid.ai.core.git.GitCloneMode
 import com.opendroid.ai.data.repository.GitHubRepoSummary
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.GitHubWorkspaceViewModel
@@ -83,11 +82,7 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                             Text("Origin: ${result.remoteUrl}")
                             Text("Branch: ${result.branch}")
                             Text("Commit: ${result.commit}")
-                            Text(when {
-                                result.mode == GitCloneMode.FULL_HISTORY -> "Clone mode: full history"
-                                result.shallowMetadataPresent -> "Clone mode: depth 1 (shallow history)"
-                                else -> "Clone mode: depth 1 requested; repository has no older commit to truncate"
-                            })
+                            Text("Clone mode: full history")
                         }
                     }
                 }
@@ -100,7 +95,7 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                         color = AppTheme.colors.textSecondary
                     )
                     Text(
-                        "Clone creates a real .git working tree. Full history is the default; the separate shallow action requests depth 1. Existing workspace paths are never replaced. Cloning does not run project code or hydrate submodules/Git LFS objects.",
+                        "Clone creates a real .git working tree with full history. This build selects a Java 8-baseline Git library for the app's minimum API 28; its API 28 emulator verification is pending. Shallow depth-1 cloning is not supported by this library version. Existing workspace paths are never replaced. Cloning does not run project code or hydrate submodules/Git LFS objects.",
                         color = AppTheme.colors.textSecondary
                     )
                 }
@@ -113,17 +108,8 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                             OutlinedButton(onClick = { selectedRepo = repo; path = ""; viewModel.openRepository(repo) }) { Text("FILES") }
                             OutlinedButton(onClick = { selectedRepo = repo; viewModel.loadIssues(repo) }) { Text("ISSUES") }
                         }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                onClick = { viewModel.cloneRepository(repo, GitCloneMode.FULL_HISTORY) },
-                                enabled = !busy,
-                                modifier = Modifier.weight(1f)
-                            ) { Text("FULL HISTORY CLONE") }
-                            OutlinedButton(
-                                onClick = { viewModel.cloneRepository(repo, GitCloneMode.SHALLOW_DEPTH_1) },
-                                enabled = !busy,
-                                modifier = Modifier.weight(1f)
-                            ) { Text("SHALLOW · 1 COMMIT") }
+                        OutlinedButton(onClick = { viewModel.cloneRepository(repo) }, enabled = !busy) {
+                            Text("FULL HISTORY CLONE")
                         }
                         OutlinedButton(onClick = { viewModel.importSourceSnapshot(repo) }, enabled = !busy) {
                                 Text("IMPORT SOURCE SNAPSHOT")

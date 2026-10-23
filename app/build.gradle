@@ -261,7 +261,7 @@ dependencies {
     implementation 'com.google.android.gms:play-services-auth:22.0.0'
 
     // Pure-Java Git implementation for real app-workspace repositories (no native ABI).
-    implementation 'org.eclipse.jgit:org.eclipse.jgit:7.8.0.202609011348-r'
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:5.13.3.202401111512-r'
 
     // Networking
     // The OkHttp BOM is the single source of truth for every com.squareup.okhttp3

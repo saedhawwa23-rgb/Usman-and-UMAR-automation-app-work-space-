@@ -10,12 +10,12 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.errors.CanceledException
 import org.eclipse.jgit.lib.Constants
-import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.File
 import java.io.IOException
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.util.UUID
@@ -24,21 +24,13 @@ import java.util.concurrent.locks.ReentrantLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Full history is the default; depth-1 must be chosen explicitly. */
-enum class GitCloneMode(val depth: Int?) {
-    FULL_HISTORY(null),
-    SHALLOW_DEPTH_1(1)
-}
-
 data class GitCloneProgress(val task: String, val completed: Int, val total: Int)
 
 data class GitWorkspaceCloneResult(
     val relativePath: String,
     val remoteUrl: String,
     val branch: String,
-    val commit: String,
-    val mode: GitCloneMode,
-    val shallowMetadataPresent: Boolean
+    val commit: String
 )
 
 class GitCloneCancellation internal constructor() {
@@ -77,7 +69,6 @@ class GitWorkspaceManager @Inject constructor(
     suspend fun cloneGitHubRepository(
         fullName: String,
         defaultBranch: String,
-        mode: GitCloneMode,
         cancellation: GitCloneCancellation,
         onProgress: (GitCloneProgress) -> Unit = {}
     ): GitWorkspaceCloneResult = withContext(Dispatchers.IO) {
@@ -92,7 +83,6 @@ class GitWorkspaceManager @Inject constructor(
                 remoteUrl = remoteUrl,
                 destinationRelativePath = "projects/$owner/$repository",
                 expectedBranch = defaultBranch,
-                mode = mode,
                 credentials = credentials,
                 cancellation = cancellation,
                 onProgress = onProgress
@@ -127,7 +117,6 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         remoteUrl: String,
         destinationRelativePath: String,
         expectedBranch: String,
-        mode: GitCloneMode,
         credentials: UsernamePasswordCredentialsProvider? = null,
         cancellation: GitCloneCancellation = GitCloneCancellation(),
         onProgress: (GitCloneProgress) -> Unit = {}
@@ -195,8 +184,6 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
                     onProgress(GitCloneProgress(task, completed, total))
                 }
 
-                override fun showDuration(enabled: Boolean) = Unit
-
                 override fun isCancelled(): Boolean = cancellation.isRequested()
             }
 
@@ -208,7 +195,6 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
                 .setTimeout(60)
                 .setProgressMonitor(progressMonitor)
             if (credentials != null) clone = clone.setCredentialsProvider(credentials)
-            mode.depth?.let { clone = clone.setDepth(it) }
 
             val downloaded = try {
                 clone.call()
@@ -222,7 +208,7 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
             }
             try {
                 ensureNotCancelled(cancellation)
-                verify(downloaded.repository, root, remoteUrl, expectedBranch, mode)
+                verify(downloaded.repository, root, remoteUrl, expectedBranch)
             } finally {
                 downloaded.close()
             }
@@ -239,7 +225,7 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
 
                 val published = Git.open(target)
                 try {
-                    verify(published.repository, root, remoteUrl, expectedBranch, mode).also {
+                    verify(published.repository, root, remoteUrl, expectedBranch).also {
                         cloneVerified = true
                     }
                 } finally {
@@ -310,14 +296,13 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         repository: org.eclipse.jgit.lib.Repository,
         root: File,
         expectedRemote: String,
-        expectedBranch: String,
-        mode: GitCloneMode
+        expectedBranch: String
     ): GitWorkspaceCloneResult {
         require(!repository.isBare) { "The clone did not create a working tree." }
         val workTree = repository.workTree.canonicalFile
         val rootPath = root.toPath().toAbsolutePath().normalize()
         require(workTree.toPath().startsWith(rootPath)) { "The cloned working tree is outside the app workspace." }
-        require(repository.config.getString("remote", "origin", "url") == expectedRemote) {
+        require(remotesMatch(repository.config.getString("remote", "origin", "url"), expectedRemote)) {
             "The clone's origin remote does not match the selected GitHub repository."
         }
         val branch = repository.branch
@@ -333,35 +318,25 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         RevWalk(repository).use { walk -> walk.parseCommit(head) }
 
         val shallowFile = File(repository.directory, "shallow")
-        when (mode) {
-            GitCloneMode.FULL_HISTORY -> require(!shallowFile.exists()) {
-                "The full-history clone contains shallow metadata; no fallback was accepted."
-            }
-            GitCloneMode.SHALLOW_DEPTH_1 -> {
-                val currentBranchCommitCount = countCurrentBranchCommits(repository, head, 2)
-                require((shallowFile.isFile && shallowFile.length() > 0L) || currentBranchCommitCount <= 1) {
-                    "The selected depth-1 clone could not be verified; no full-history or snapshot fallback was accepted."
-                }
-            }
+        require(!shallowFile.exists()) {
+            "This Android-compatible Git engine only supports full-history clones; shallow metadata was not expected."
         }
 
         return GitWorkspaceCloneResult(
             relativePath = rootPath.relativize(workTree.toPath()).joinToString("/"),
             remoteUrl = expectedRemote,
             branch = branch,
-            commit = head.name,
-            mode = mode,
-            shallowMetadataPresent = shallowFile.isFile && shallowFile.length() > 0L
+            commit = head.name
         )
     }
 
-    private fun countCurrentBranchCommits(repository: org.eclipse.jgit.lib.Repository, head: ObjectId, limit: Int): Int =
-        RevWalk(repository).use { walk ->
-            walk.markStart(walk.parseCommit(head))
-            var count = 0
-            while (count < limit && walk.next() != null) count++
-            count
-        }
+    private fun remotesMatch(actual: String?, expected: String): Boolean {
+        if (actual == expected) return true
+        if (actual == null || !actual.startsWith("file:") || !expected.startsWith("file:")) return false
+        return runCatching {
+            File(URI(actual)).canonicalFile == File(URI(expected)).canonicalFile
+        }.getOrDefault(false)
+    }
 
     private fun classifyCloneFailure(failure: Exception): String = when {
         failure.message?.contains("authentication", ignoreCase = true) == true ||

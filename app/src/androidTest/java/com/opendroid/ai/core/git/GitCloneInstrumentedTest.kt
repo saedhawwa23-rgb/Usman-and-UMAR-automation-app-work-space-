@@ -14,7 +14,7 @@ import java.nio.file.Files
 @RunWith(AndroidJUnit4::class)
 class GitCloneInstrumentedTest {
     @Test
-    fun jgitFullAndDepthOneCloneRunOnAndroidRuntime() {
+    fun jgitFullHistoryCloneRunsOnAndroidRuntime() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val base = Files.createTempDirectory(context.cacheDir.toPath(), "git-clone-instrumented-").toFile()
         var source: Git? = null
@@ -33,25 +33,12 @@ class GitCloneInstrumentedTest {
             val full = GitCloneEngine(workspace).clone(
                 remoteUrl = remote,
                 destinationRelativePath = "projects/android/full",
-                expectedBranch = "main",
-                mode = GitCloneMode.FULL_HISTORY
+                expectedBranch = "main"
             )
             Git.open(File(workspace, "projects/android/full")).use { cloned ->
                 assertEquals(3, cloned.log().call().count())
                 assertTrue(cloned.repository.exactRef("refs/remotes/origin/main") != null)
                 assertEquals("main", full.branch)
-            }
-
-            val shallow = GitCloneEngine(workspace).clone(
-                remoteUrl = remote,
-                destinationRelativePath = "projects/android/shallow",
-                expectedBranch = "main",
-                mode = GitCloneMode.SHALLOW_DEPTH_1
-            )
-            Git.open(File(workspace, "projects/android/shallow")).use { cloned ->
-                assertEquals(1, cloned.log().call().count())
-                assertTrue(File(cloned.repository.directory, "shallow").isFile)
-                assertEquals("main", shallow.branch)
             }
         } finally {
             source?.close()

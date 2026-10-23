@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.File
+import java.net.URI
 import java.nio.file.Files
 
 class GitCloneEngineTest {
@@ -26,14 +27,15 @@ class GitCloneEngineTest {
                 remoteUrl = remote,
                 destinationRelativePath = "projects/demo/sample",
                 expectedBranch = "main",
-                mode = GitCloneMode.FULL_HISTORY,
                 cancellation = cancellation
             )
 
             val clonedDir = File(workspace, "projects/demo/sample")
             Git.open(clonedDir).use { cloned ->
                 assertEquals("main", cloned.repository.branch)
-                assertEquals(remote, cloned.repository.config.getString("remote", "origin", "url"))
+                val clonedRemote = cloned.repository.config.getString("remote", "origin", "url")
+                    ?: error("Clone did not record its origin remote")
+                assertEquals(File(URI(remote)).canonicalFile, File(URI(clonedRemote)).canonicalFile)
                 assertTrue(cloned.repository.exactRef("refs/heads/main") != null)
                 assertTrue(cloned.repository.exactRef("refs/remotes/origin/main") != null)
                 assertTrue(cloned.repository.exactRef("refs/remotes/origin/feature/demo") != null)
@@ -43,41 +45,8 @@ class GitCloneEngineTest {
             }
             assertEquals("projects/demo/sample", result.relativePath)
             assertEquals("main", result.branch)
-            assertEquals(GitCloneMode.FULL_HISTORY, result.mode)
             assertEquals(40, result.commit.length)
-            assertFalse(result.shallowMetadataPresent)
             assertFalse("Cancellation after successful publication must be rejected", cancellation.cancel())
-        } finally {
-            source?.close()
-            base.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun depthOneCloneIsExplicitAndVerifiesShallowMetadata() {
-        val base = Files.createTempDirectory("git-clone-shallow-test").toFile()
-        var source: Git? = null
-        try {
-            val sourceDir = File(base, "source")
-            source = createRepository(sourceDir, commitCount = 3)
-            val workspace = File(base, "workspace")
-            val remote = sourceDir.toURI().toString()
-
-            val result = GitCloneEngine(workspace).clone(
-                remoteUrl = remote,
-                destinationRelativePath = "projects/demo/sample",
-                expectedBranch = "main",
-                mode = GitCloneMode.SHALLOW_DEPTH_1
-            )
-
-            val clonedDir = File(workspace, "projects/demo/sample")
-            Git.open(clonedDir).use { cloned ->
-                assertEquals("main", cloned.repository.branch)
-                assertTrue(File(cloned.repository.directory, "shallow").isFile)
-                assertEquals(1, cloned.log().call().count())
-            }
-            assertEquals(GitCloneMode.SHALLOW_DEPTH_1, result.mode)
-            assertTrue(result.shallowMetadataPresent)
         } finally {
             source?.close()
             base.deleteRecursively()
@@ -101,7 +70,6 @@ class GitCloneEngineTest {
                     remoteUrl = remote,
                     destinationRelativePath = "projects/demo/sample",
                     expectedBranch = "main",
-                    mode = GitCloneMode.FULL_HISTORY
                 )
             }
             assertEquals("preserve me", File(existing, "README.txt").readText())
@@ -110,7 +78,6 @@ class GitCloneEngineTest {
                     remoteUrl = remote,
                     destinationRelativePath = "projects/../outside",
                     expectedBranch = "main",
-                    mode = GitCloneMode.FULL_HISTORY
                 )
             }
         } finally {
@@ -136,7 +103,6 @@ class GitCloneEngineTest {
                     remoteUrl = sourceDir.toURI().toString(),
                     destinationRelativePath = "projects/demo/sample",
                     expectedBranch = "main",
-                    mode = GitCloneMode.FULL_HISTORY
                 )
             }
             assertEquals("outside workspace", marker.readText())

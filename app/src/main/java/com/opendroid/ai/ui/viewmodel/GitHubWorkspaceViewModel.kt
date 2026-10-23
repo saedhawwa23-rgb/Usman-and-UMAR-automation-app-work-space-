@@ -3,7 +3,6 @@ package com.opendroid.ai.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.opendroid.ai.core.git.GitCloneCancellation
-import com.opendroid.ai.core.git.GitCloneMode
 import com.opendroid.ai.core.git.GitWorkspaceCloneResult
 import com.opendroid.ai.core.git.GitWorkspaceManager
 import com.opendroid.ai.data.repository.GitHubDeviceCode
@@ -107,19 +106,18 @@ class GitHubWorkspaceViewModel @Inject constructor(
         }
     }
 
-    fun cloneRepository(repo: GitHubRepoSummary, mode: GitCloneMode) = viewModelScope.launch {
+    fun cloneRepository(repo: GitHubRepoSummary) = viewModelScope.launch {
         if (busy.value) return@launch
         val cancellation = GitCloneCancellation()
         activeCloneCancellation = cancellation
         cloneResult.value = null
         cloning.value = true
         busy.value = true
-        message.value = "Starting ${if (mode == GitCloneMode.FULL_HISTORY) "full-history" else "depth-1"} clone of ${repo.fullName}…"
+        message.value = "Starting full-history clone of ${repo.fullName}…"
         try {
             val result = gitWorkspace.cloneGitHubRepository(
                 fullName = repo.fullName,
                 defaultBranch = repo.defaultBranch,
-                mode = mode,
                 cancellation = cancellation
             ) { progress ->
                 message.value = if (progress.total > 0) {
@@ -129,12 +127,7 @@ class GitHubWorkspaceViewModel @Inject constructor(
                 }
             }
             cloneResult.value = result
-            val history = when {
-                result.mode == GitCloneMode.FULL_HISTORY -> "full history"
-                result.shallowMetadataPresent -> "shallow depth-1"
-                else -> "depth-1 request (repository history has no older commit to truncate)"
-            }
-            message.value = "Verified $history clone at ${result.relativePath} · ${result.branch} · ${result.commit.take(12)}. Project code was not run."
+            message.value = "Verified full-history clone at ${result.relativePath} · ${result.branch} · ${result.commit.take(12)}. Project code was not run."
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
