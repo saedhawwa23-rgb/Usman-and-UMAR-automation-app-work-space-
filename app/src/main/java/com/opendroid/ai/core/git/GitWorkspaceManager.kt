@@ -195,6 +195,8 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
                     onProgress(GitCloneProgress(task, completed, total))
                 }
 
+                override fun showDuration(enabled: Boolean) = Unit
+
                 override fun isCancelled(): Boolean = cancellation.isRequested()
             }
 
@@ -380,8 +382,8 @@ internal class GitCloneEngine(private val workspaceRoot: File) {
         if (!path.startsWith(rootPath) || path == rootPath) return
         val relative = rootPath.relativize(path)
         var parent = rootPath
-        for (segment in relative.dropLast(1)) {
-            parent = parent.resolve(segment)
+        for (index in 0 until (relative.nameCount - 1)) {
+            parent = parent.resolve(relative.getName(index))
             if (Files.isSymbolicLink(parent) || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) return
         }
         if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return
