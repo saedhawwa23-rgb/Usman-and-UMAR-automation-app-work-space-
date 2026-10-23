@@ -2,6 +2,10 @@ package com.opendroid.ai.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.opendroid.ai.core.git.GitCloneCancellation
+import com.opendroid.ai.core.git.GitCloneMode
+import com.opendroid.ai.core.git.GitWorkspaceCloneResult
+import com.opendroid.ai.core.git.GitWorkspaceManager
 import com.opendroid.ai.data.repository.GitHubDeviceCode
 import com.opendroid.ai.data.repository.GitHubDevicePoll
 import com.opendroid.ai.data.repository.GitHubFile
@@ -20,7 +24,8 @@ import javax.inject.Inject
 @HiltViewModel
 class GitHubWorkspaceViewModel @Inject constructor(
     private val github: GitHubIntegration,
-    private val projectImporter: GitHubProjectSnapshotImporter
+    private val projectImporter: GitHubProjectSnapshotImporter,
+    private val gitWorkspace: GitWorkspaceManager
 ) : ViewModel() {
     val authenticated = MutableStateFlow(github.isAuthenticated())
     val account = MutableStateFlow<com.opendroid.ai.data.repository.GitHubAccount?>(null)
@@ -29,9 +34,12 @@ class GitHubWorkspaceViewModel @Inject constructor(
     val selectedFile = MutableStateFlow<GitHubFile?>(null)
     val issues = MutableStateFlow<List<GitHubIssue>>(emptyList())
     val busy = MutableStateFlow(false)
+    val cloning = MutableStateFlow(false)
+    val cloneResult = MutableStateFlow<GitWorkspaceCloneResult?>(null)
     val message = MutableStateFlow<String?>(null)
     val deviceCode = MutableStateFlow<GitHubDeviceCode?>(null)
     val configured get() = github.isConfigured()
+    private var activeCloneCancellation: GitCloneCancellation? = null
 
     init { if (authenticated.value) refresh() }
 
@@ -97,6 +105,59 @@ class GitHubWorkspaceViewModel @Inject constructor(
         } finally {
             busy.value = false
         }
+    }
+
+    fun cloneRepository(repo: GitHubRepoSummary, mode: GitCloneMode) = viewModelScope.launch {
+        if (busy.value) return@launch
+        val cancellation = GitCloneCancellation()
+        activeCloneCancellation = cancellation
+        cloneResult.value = null
+        cloning.value = true
+        busy.value = true
+        message.value = "Starting ${if (mode == GitCloneMode.FULL_HISTORY) "full-history" else "depth-1"} clone of ${repo.fullName}…"
+        try {
+            val result = gitWorkspace.cloneGitHubRepository(
+                fullName = repo.fullName,
+                defaultBranch = repo.defaultBranch,
+                mode = mode,
+                cancellation = cancellation
+            ) { progress ->
+                message.value = if (progress.total > 0) {
+                    "${progress.task}: ${progress.completed}/${progress.total}"
+                } else {
+                    progress.task
+                }
+            }
+            cloneResult.value = result
+            val history = when {
+                result.mode == GitCloneMode.FULL_HISTORY -> "full history"
+                result.shallowMetadataPresent -> "shallow depth-1"
+                else -> "depth-1 request (repository history has no older commit to truncate)"
+            }
+            message.value = "Verified $history clone at ${result.relativePath} · ${result.branch} · ${result.commit.take(12)}. Project code was not run."
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            message.value = if (cancellation.isRequested()) {
+                "Clone cancelled; temporary clone data was removed."
+            } else {
+                failure.message ?: "Could not clone the GitHub repository."
+            }
+        } finally {
+            activeCloneCancellation = null
+            cloning.value = false
+            busy.value = false
+        }
+    }
+
+    fun cancelClone() {
+        activeCloneCancellation?.cancel()
+        if (cloning.value) message.value = "Cancellation requested; waiting for the current Git transfer to stop…"
+    }
+
+    override fun onCleared() {
+        activeCloneCancellation?.cancel()
+        super.onCleared()
     }
 
     fun loadIssues(repo: GitHubRepoSummary) = viewModelScope.launch {

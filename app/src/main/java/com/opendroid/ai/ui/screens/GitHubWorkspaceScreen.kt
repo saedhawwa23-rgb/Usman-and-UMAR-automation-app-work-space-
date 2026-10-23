@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.opendroid.ai.core.git.GitCloneMode
 import com.opendroid.ai.data.repository.GitHubRepoSummary
 import com.opendroid.ai.ui.theme.AppTheme
 import com.opendroid.ai.ui.viewmodel.GitHubWorkspaceViewModel
@@ -48,6 +49,8 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
     val issues by viewModel.issues.collectAsState()
     val deviceCode by viewModel.deviceCode.collectAsState()
     val busy by viewModel.busy.collectAsState()
+    val cloning by viewModel.cloning.collectAsState()
+    val cloneResult by viewModel.cloneResult.collectAsState()
     val message by viewModel.message.collectAsState()
     var selectedRepo by remember { mutableStateOf<GitHubRepoSummary?>(null) }
     var path by remember { mutableStateOf("") }
@@ -71,12 +74,33 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick = viewModel::refresh, enabled = !busy) { Text("REFRESH") }; OutlinedButton(onClick = viewModel::signOut) { Text("SIGN OUT") } }
                 }
                 message?.let { Text(it, color = AppTheme.colors.textSecondary) }
+                if (cloning) OutlinedButton(onClick = viewModel::cancelClone) { Text("CANCEL CLONE") }
+                cloneResult?.let { result ->
+                    Card(colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("VERIFIED GIT WORKTREE", fontWeight = FontWeight.Bold)
+                            Text("Path: ${result.relativePath}")
+                            Text("Origin: ${result.remoteUrl}")
+                            Text("Branch: ${result.branch}")
+                            Text("Commit: ${result.commit}")
+                            Text(when {
+                                result.mode == GitCloneMode.FULL_HISTORY -> "Clone mode: full history"
+                                result.shallowMetadataPresent -> "Clone mode: depth 1 (shallow history)"
+                                else -> "Clone mode: depth 1 requested; repository has no older commit to truncate"
+                            })
+                        }
+                    }
+                }
             }
             if (authenticated) {
                 item {
                     Text("YOUR REPOSITORIES", fontWeight = FontWeight.Bold)
                     Text(
                         "Import downloads a bounded source snapshot into the shared app workspace. Git history and branches are not included; project code is not run and dependencies are not installed.",
+                        color = AppTheme.colors.textSecondary
+                    )
+                    Text(
+                        "Clone creates a real .git working tree. Full history is the default; the separate shallow action requests depth 1. Existing workspace paths are never replaced. Cloning does not run project code or hydrate submodules/Git LFS objects.",
                         color = AppTheme.colors.textSecondary
                     )
                 }
@@ -86,10 +110,22 @@ fun GitHubWorkspaceScreen(viewModel: GitHubWorkspaceViewModel, onBack: () -> Uni
                             Text(repo.fullName, fontWeight = FontWeight.Bold)
                             Text(if (repo.private) "Private · ${repo.defaultBranch}" else "Public · ${repo.defaultBranch}", color = AppTheme.colors.textSecondary)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { selectedRepo = repo; path = ""; viewModel.openRepository(repo) }) { Text("FILES") }
-                                OutlinedButton(onClick = { selectedRepo = repo; viewModel.loadIssues(repo) }) { Text("ISSUES") }
-                            }
-                            OutlinedButton(onClick = { viewModel.importSourceSnapshot(repo) }, enabled = !busy) {
+                            OutlinedButton(onClick = { selectedRepo = repo; path = ""; viewModel.openRepository(repo) }) { Text("FILES") }
+                            OutlinedButton(onClick = { selectedRepo = repo; viewModel.loadIssues(repo) }) { Text("ISSUES") }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { viewModel.cloneRepository(repo, GitCloneMode.FULL_HISTORY) },
+                                enabled = !busy,
+                                modifier = Modifier.weight(1f)
+                            ) { Text("FULL HISTORY CLONE") }
+                            OutlinedButton(
+                                onClick = { viewModel.cloneRepository(repo, GitCloneMode.SHALLOW_DEPTH_1) },
+                                enabled = !busy,
+                                modifier = Modifier.weight(1f)
+                            ) { Text("SHALLOW · 1 COMMIT") }
+                        }
+                        OutlinedButton(onClick = { viewModel.importSourceSnapshot(repo) }, enabled = !busy) {
                                 Text("IMPORT SOURCE SNAPSHOT")
                             }
                         }

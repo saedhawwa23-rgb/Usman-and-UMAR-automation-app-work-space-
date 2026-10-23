@@ -260,6 +260,9 @@ dependencies {
     // Request Google Drive authorization only when the user chooses a Drive action.
     implementation 'com.google.android.gms:play-services-auth:22.0.0'
 
+    // Pure-Java Git implementation for real app-workspace repositories (no native ABI).
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:7.8.0.202609011348-r'
+
     // Networking
     // The OkHttp BOM is the single source of truth for every com.squareup.okhttp3
     // module (including the ones Retrofit pulls in transitively), so okhttp,
