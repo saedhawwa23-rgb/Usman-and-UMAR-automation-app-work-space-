@@ -98,7 +98,10 @@ object WorkspaceProjectSnapshotExtractor {
                         } else {
                             require(seenFiles.add(relative)) { "The repository archive contains a duplicate file." }
                             require(!output.exists()) { "The repository archive has conflicting entries." }
-                            require(output.parentFile?.mkdirs() != false) { "Could not create an imported project folder." }
+                            val outputParent = output.parentFile
+                            require(outputParent != null && (outputParent.mkdirs() || outputParent.isDirectory)) {
+                                "Could not create an imported project folder."
+                            }
                             var entryBytes = 0L
                             FileOutputStream(output).use { stream ->
                                 while (true) {
